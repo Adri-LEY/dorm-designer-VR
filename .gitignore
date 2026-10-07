@@ -1,0 +1,68 @@
+# ==========================================
+# Core Unity
+# ==========================================
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+# MemoryCaptures can get excessive in size.
+/[Mm]emoryCaptures/
+
+# ==========================================
+# Meta SDK / VR & Android Specific
+# ==========================================
+# Never commit Android keystores to a public or shared repo
+*.keystore
+user.keystore
+
+# Ignore Android build/cache folders
+.gradle/
+/[Aa]ssets/[Pp]lugins/[Aa]ndroid/assets/
+
+# Ignore compiled Android packages
+*.apk
+*.aab
+
+# Local Oculus Platform settings (prevents overriding team app IDs with local test IDs)
+Oculus/Platform/LocalSettings*
+
+# ==========================================
+# IDEs and Code Editors
+# ==========================================
+.vs/
+.idea/
+.vscode/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# ==========================================
+# OS Generated & Misc
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.unitypackage
+
+# Crashlytics generated file
+crashlytics-build.properties
