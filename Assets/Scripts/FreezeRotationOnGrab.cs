@@ -1,30 +1,36 @@
 using UnityEngine;
 
 /// <summary>
-/// Freezes the Y-axis rotation (and optionally X/Z) of a furniture object
+/// Freezes the rotation axes and/or Y position of a furniture object
 /// even when grabbed by the Meta XR grab system.
 ///
-/// The Meta XR grab interactable directly writes to transform.rotation each frame,
-/// bypassing Rigidbody constraints. This script counters that by restoring the
-/// locked axes every LateUpdate (which runs after the grab system updates).
+/// The Meta XR grab interactable directly writes to transform.rotation and
+/// transform.position each frame, bypassing Rigidbody constraints.
+/// This script counters that by restoring locked axes every LateUpdate
+/// (which runs after the grab system updates).
 ///
 /// Attach this to the same GameObject as your GrabInteractable / OVRGrabbable.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class FreezeRotationOnGrab : MonoBehaviour
 {
-    [Header("Freeze Axes During Grab")]
-    public bool freezeX = true;
-    public bool freezeY = true;  // Most useful for furniture: keep it upright
-    public bool freezeZ = true;
+    [Header("Freeze Rotation Axes During Grab")]
+    public bool freezeRotX = true;
+    public bool freezeRotY = true;  // Most useful for furniture: keep it upright
+    public bool freezeRotZ = true;
+
+    [Header("Freeze Position Axes During Grab")]
+    public bool freezePosY = true;  // Prevent lifting off the floor
 
     private Quaternion _frozenRotation;
+    private float _frozenPosY;
     private bool _isGrabbed = false;
 
     void Start()
     {
-        // Record the initial rotation as the "locked" reference
+        // Record the initial transform as the "locked" reference
         _frozenRotation = transform.rotation;
+        _frozenPosY = transform.position.y;
     }
 
     /// <summary>
@@ -34,8 +40,9 @@ public class FreezeRotationOnGrab : MonoBehaviour
     public void OnGrabBegin()
     {
         _isGrabbed = true;
-        // Snapshot the rotation at the moment the grab begins
+        // Snapshot the transform at the moment the grab begins
         _frozenRotation = transform.rotation;
+        _frozenPosY = transform.position.y;
     }
 
     /// <summary>
@@ -51,16 +58,23 @@ public class FreezeRotationOnGrab : MonoBehaviour
     {
         if (!_isGrabbed) return;
 
-        // Decompose the current rotation applied by the grab system
+        // --- Rotation lock ---
         Vector3 currentEuler = transform.rotation.eulerAngles;
         Vector3 frozenEuler  = _frozenRotation.eulerAngles;
 
-        // Replace only the axes we want to freeze
-        float x = freezeX ? frozenEuler.x : currentEuler.x;
-        float y = freezeY ? frozenEuler.y : currentEuler.y;
-        float z = freezeZ ? frozenEuler.z : currentEuler.z;
+        float x = freezeRotX ? frozenEuler.x : currentEuler.x;
+        float y = freezeRotY ? frozenEuler.y : currentEuler.y;
+        float z = freezeRotZ ? frozenEuler.z : currentEuler.z;
 
         transform.rotation = Quaternion.Euler(x, y, z);
+
+        // --- Position Y lock ---
+        if (freezePosY)
+        {
+            Vector3 pos = transform.position;
+            pos.y = _frozenPosY;
+            transform.position = pos;
+        }
     }
 }
 
