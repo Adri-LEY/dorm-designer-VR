@@ -52,6 +52,14 @@ public class FreezeRotationOnGrab : MonoBehaviour
     public void OnGrabEnd()
     {
         _isGrabbed = false;
+
+        // When the grab releases, the Rigidbody goes non-kinematic and Unity
+        // applies whatever angular velocity it accumulated during the grab
+        // (from the controller's motion fighting against our rotation lock).
+        // Zero it out so the object doesn't spin on release.
+        Rigidbody rb = GetComponent<Rigidbody>();
+        rb.angularVelocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
     }
 
     void LateUpdate()
