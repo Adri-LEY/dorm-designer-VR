@@ -3953,8 +3953,8 @@ Transform:
   m_GameObject: {fileID: 573436699}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3.277212, y: 2.039999, z: 0.1}
+  m_LocalPosition: {x: 2.009, y: -1.958, z: 0.108}
+  m_LocalScale: {x: 0.13984968, y: 0.08490177, z: 0.016190069}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1880835366}
@@ -9190,6 +9190,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   spawnPoint: {fileID: 1941212535}
+  furnitureBase: {fileID: 0}
   objectToSpawn: {fileID: 919132149155446097, guid: eb845043bda8ef64f9b24f08e94246d2, type: 3}
   spawnedObject: {fileID: 0}
 --- !u!1 &1397680277
@@ -11577,6 +11578,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   spawnPoint: {fileID: 1941212535}
+  furnitureBase: {fileID: 0}
   objectToSpawn: {fileID: 919132149155446097, guid: c418d25bd10eddb44bb051f677e9dfb3, type: 3}
   spawnedObject: {fileID: 0}
 --- !u!1 &1787392233
@@ -11962,6 +11964,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   spawnPoint: {fileID: 1941212535}
+  furnitureBase: {fileID: 0}
   objectToSpawn: {fileID: 919132149155446097, guid: 2662d56d5b9b32e4cbc8c67ecd63939c, type: 3}
   spawnedObject: {fileID: 0}
 --- !u!1 &1827702263
@@ -12531,6 +12534,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   spawnPoint: {fileID: 0}
+  furnitureBase: {fileID: 0}
   objectToSpawn: {fileID: 0}
   spawnedObject: {fileID: 0}
 --- !u!1 &1943129607
