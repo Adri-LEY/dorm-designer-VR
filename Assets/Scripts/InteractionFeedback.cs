@@ -6,7 +6,7 @@ public class InteractionFeedback : MonoBehaviour
     private Color originalColor;
     public Color highlightColor = Color.yellow;
     public Color hoverColor = new Color(0.5f, 0.85f, 1f, 1f);
-    private AudioSource audioSource;
+    private AudioManager audioManager;
     private bool isBeingHovered = false;
     private bool isSelected = false;
 
@@ -19,15 +19,19 @@ public class InteractionFeedback : MonoBehaviour
             originalColor = mat.color;
         }
 
-        audioSource = GetComponent<AudioSource>();
+        audioManager = AudioManager.Instance;
+        if (audioManager == null)
+        {
+            Debug.LogError("AudioManager is unavailable; furniture feedback sounds cannot play.", this);
+        }
     }
 
     public void HighlightAndPlaySound()
     {
         isSelected = true;
         UpdateColor();
-        if (audioSource != null)
-            audioSource.Play();
+        if (audioManager != null)
+            audioManager.PlaySelection();
     }
 
     public void SetHovered()
@@ -46,6 +50,8 @@ public class InteractionFeedback : MonoBehaviour
     {
         isSelected = false;
         UpdateColor();
+        if (audioManager != null)
+            audioManager.PlayDeselection();
     }
 
     private void UpdateColor()
