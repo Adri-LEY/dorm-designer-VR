@@ -10,8 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 1201271076191320144}
   - component: {fileID: 740358502485253845}
-  - component: {fileID: 7339425621874791268}
   - component: {fileID: 3386740977042037178}
+  - component: {fileID: 620045841020001}
+  - component: {fileID: 620045841020002}
+  - component: {fileID: 620045841020003}
   m_Layer: 0
   m_Name: ISDK_RayGrabInteraction
   m_TagString: Untagged
@@ -53,20 +55,8 @@ MonoBehaviour:
   _pointableElement: {fileID: 6954318894341776449}
   _surface: {fileID: 3386740977042037178}
   _selectSurface: {fileID: 0}
-  _movementProvider: {fileID: 7339425621874791268}
+  _movementProvider: {fileID: 0}
   _tiebreakerScore: 0
---- !u!114 &7339425621874791268
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 714811981485542109}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 953054d108799b942815afb3405983ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &3386740977042037178
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -80,6 +70,45 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Oculus.Interaction::Oculus.Interaction.Surfaces.ColliderSurface
   _collider: {fileID: 4565641431555862928}
+--- !u!114 &620045841020001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 714811981485542109}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f48de9a4fda4b1f8d237c86120e08b1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FurnitureManipulationState
+--- !u!114 &620045841020002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 714811981485542109}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e90c9b23a7b42a39299ef079bcc6e9a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FurnitureControllerInput
+--- !u!114 &620045841020003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 714811981485542109}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c12b5d6583d142ac9cba289fa2e2f26f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConstrainedFurnitureManipulator
+  movementSpeed: 0.6
+  rotationSnapAngle: 15
+  inputDeadzone: 0.2
 --- !u!1 &8372573651803565634
 GameObject:
   m_ObjectHideFlags: 0
@@ -221,10 +250,10 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
+  m_UseGravity: 0
+  m_IsKinematic: 1
   m_Interpolate: 1
-  m_Constraints: 112
+  m_Constraints: 0
   m_CollisionDetection: 2
 --- !u!114 &6954318894341776449
 MonoBehaviour:
