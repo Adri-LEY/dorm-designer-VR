@@ -10,6 +10,7 @@ public sealed class FurnitureControllerInput : MonoBehaviour
     public float LeftStickX { get; private set; }
     public bool RightGripHeld { get; private set; }
     public bool CancelPressed { get; private set; }
+    public bool DeletePressed { get; private set; }
 
     private void Update()
     {
@@ -17,13 +18,16 @@ public sealed class FurnitureControllerInput : MonoBehaviour
             OVRInput.Axis2D.PrimaryThumbstick,
             OVRInput.Controller.RTouch);
         LeftStickX = OVRInput.Get(
-            OVRInput.Axis2D.SecondaryThumbstick,
+            OVRInput.Axis2D.PrimaryThumbstick,
             OVRInput.Controller.LTouch).x;
         RightGripHeld = OVRInput.Get(
             OVRInput.Button.PrimaryHandTrigger,
             OVRInput.Controller.RTouch);
         CancelPressed = OVRInput.GetDown(
             OVRInput.Button.Two,
+            OVRInput.Controller.RTouch);
+        DeletePressed = OVRInput.GetDown(
+            OVRInput.Button.One,
             OVRInput.Controller.RTouch);
     }
 }
