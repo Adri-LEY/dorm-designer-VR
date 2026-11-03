@@ -23,10 +23,11 @@ public class ObjectSpawner : MonoBehaviour
             Destroy(spawnedObject); // Destroy the previously spawned object if it exists
         }
 
+        // Spawn the new object
         spawnedObject = Instantiate(
             furnitureBase,
             spawnPoint.position,
-        spawnPoint.rotation); // Spawn the new object
+        spawnPoint.rotation); 
 
         MeshFilter sourceMesh = objectToSpawn.GetComponentInChildren<MeshFilter>();
 
@@ -49,6 +50,9 @@ public class ObjectSpawner : MonoBehaviour
             Destroy(spawnedObject);
             return;
         }
+
+        // Do not keep the non-uniform scale of the base prefab when replacing its mesh.
+        spawnedObject.transform.localScale = sourceMesh.transform.lossyScale;
 
         // 4. Remplacement du mesh et du matériau
         targetMesh.sharedMesh = sourceMesh.sharedMesh;
