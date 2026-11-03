@@ -20,6 +20,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
 
     private FurnitureManipulationState _interactionState;
     private FurnitureControllerInput _input;
+    private FurnitureCollisionHandler _collisionHandler;
     private Transform _furnitureTransform;
     private Rigidbody _rigidbody;
     private float _fixedWorldY;
@@ -34,6 +35,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
     {
         _interactionState = GetComponent<FurnitureManipulationState>();
         _input = GetComponent<FurnitureControllerInput>();
+        _collisionHandler = GetComponentInParent<FurnitureCollisionHandler>();
 
         _rigidbody = GetComponentInParent<Rigidbody>();
         _furnitureTransform = _rigidbody != null
@@ -155,8 +157,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         Vector3 position = _furnitureTransform.position;
         position.x += direction.x * movementSpeed * Time.deltaTime;
         position.z += direction.y * movementSpeed * Time.deltaTime;
-        position.y = _fixedWorldY;
-        _furnitureTransform.position = position;
+        TryApplyPose(position, _worldYaw);
     }
 
     private void ApplyYawSnap()
@@ -173,17 +174,31 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
             return;
         }
 
-        _worldYaw += Mathf.Sign(horizontal) * rotationSnapAngle;
-        _rotationSnapArmed = false;
+        float candidateYaw = _worldYaw + Mathf.Sign(horizontal) * rotationSnapAngle;
+        if (TryApplyPose(_furnitureTransform.position, candidateYaw))
+        {
+            _rotationSnapArmed = false;
+        }
     }
 
     private void EnforceRoomConstraints()
     {
-        Vector3 position = _furnitureTransform.position;
+        TryApplyPose(_furnitureTransform.position, _worldYaw);
+    }
+
+    private bool TryApplyPose(Vector3 position, float yaw)
+    {
         position.y = _fixedWorldY;
-        _furnitureTransform.SetPositionAndRotation(
-            position,
-            Quaternion.Euler(0f, _worldYaw, 0f));
+        Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
+
+        if (_collisionHandler != null && !_collisionHandler.IsPoseValid(position, rotation))
+        {
+            return false;
+        }
+
+        _furnitureTransform.SetPositionAndRotation(position, rotation);
+        _worldYaw = yaw;
+        return true;
     }
 
     public void Initialize(IGrabbable grabbable)
