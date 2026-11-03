@@ -10,7 +10,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
 {
     [Header("Room movement")]
     [Tooltip("Horizontal travel speed in world units per second.")]
-    [SerializeField, Min(0f)] private float movementSpeed = 0.6f;
+    [SerializeField, Min(0f)] private float movementSpeed = 1.5f;
 
     [Tooltip("Yaw change for each left-stick snap, in degrees.")]
     [SerializeField, Min(1f)] private float rotationSnapAngle = 15f;
@@ -89,6 +89,12 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         }
 
         bool isSelected = _interactionState.IsSelected;
+        if (isSelected && _input.DeletePressed)
+        {
+            Destroy(_furnitureTransform.gameObject);
+            return;
+        }
+
         if (!isSelected)
         {
             _cancelledUntilDeselected = false;
