@@ -155,8 +155,32 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         Vector2 direction = stick / magnitude * adjustedMagnitude;
 
         Vector3 position = _furnitureTransform.position;
-        position.x += direction.x * movementSpeed * Time.deltaTime;
-        position.z += direction.y * movementSpeed * Time.deltaTime;
+
+        // --- NEW: Camera-Relative Movement ---
+        Camera playerCamera = Camera.main;
+
+        if (playerCamera != null)
+        {
+            // Get the camera's forward and right directions, ignoring looking up/down
+            Vector3 camForward = playerCamera.transform.forward;
+            camForward.y = 0;
+            camForward.Normalize();
+
+            Vector3 camRight = playerCamera.transform.right;
+            camRight.y = 0;
+            camRight.Normalize();
+
+            // Move the furniture relative to the user's perspective
+            position += (camRight * direction.x + camForward * direction.y) * movementSpeed * Time.deltaTime;
+        }
+        else
+        {
+            // Fallback to global world coordinates if no MainCamera is found
+            position.x += direction.x * movementSpeed * Time.deltaTime;
+            position.z += direction.y * movementSpeed * Time.deltaTime;
+        }
+        // -------------------------------------
+
         TryApplyPose(position, _worldYaw);
     }
 
