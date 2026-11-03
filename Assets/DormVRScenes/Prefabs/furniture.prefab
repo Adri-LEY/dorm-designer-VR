@@ -407,6 +407,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12734d864d68fa54cb4858e3455ed872, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FreezeRotationOnGrab
-  freezeX: 1
-  freezeY: 1
-  freezeZ: 1
+  freezeRotX: 1
+  freezeRotY: 0
+  freezeRotZ: 1
+  freezePosY: 1

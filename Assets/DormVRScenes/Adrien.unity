@@ -9304,7 +9304,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   spawnPoint: {fileID: 1941212535}
   furnitureBase: {fileID: 8372573651803565634, guid: 93973c92748542149a75d0aca4da1330, type: 3}
-  objectToSpawn: {fileID: 919132149155446097, guid: eb845043bda8ef64f9b24f08e94246d2, type: 3}
+  objectToSpawn: {fileID: 185116946542051964, guid: 2a619cef4a9b46c4b8f0793469766e34, type: 3}
   spawnedObject: {fileID: 0}
 --- !u!1 &1397680277
 GameObject:
@@ -11692,7 +11692,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   spawnPoint: {fileID: 1941212535}
   furnitureBase: {fileID: 8372573651803565634, guid: 93973c92748542149a75d0aca4da1330, type: 3}
-  objectToSpawn: {fileID: 919132149155446097, guid: c418d25bd10eddb44bb051f677e9dfb3, type: 3}
+  objectToSpawn: {fileID: 4651938205953472406, guid: f5ba2a5687269084a9a044904bbf8ee9, type: 3}
   spawnedObject: {fileID: 0}
 --- !u!1 &1787392233
 GameObject:
@@ -12078,7 +12078,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   spawnPoint: {fileID: 1941212535}
   furnitureBase: {fileID: 8372573651803565634, guid: 93973c92748542149a75d0aca4da1330, type: 3}
-  objectToSpawn: {fileID: 919132149155446097, guid: 2662d56d5b9b32e4cbc8c67ecd63939c, type: 3}
+  objectToSpawn: {fileID: 6724078428577399983, guid: 4f22d518f3cccaf449ecc63e09ae21ff, type: 3}
   spawnedObject: {fileID: 0}
 --- !u!1 &1827702263
 GameObject:
