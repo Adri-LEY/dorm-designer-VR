@@ -9,8 +9,6 @@ public class VRMenuController : MonoBehaviour
     [Header("Tracking Anchors")]
     [Tooltip("Drag the LeftHandAnchor from OVRCameraRig")]
     public Transform leftController;
-    [Tooltip("Drag the RightHandAnchor from OVRCameraRig")]
-    public Transform rightController;
     [Tooltip("Drag the CenterEyeAnchor from OVRCameraRig")]
     public Transform headCamera;
 
@@ -29,17 +27,10 @@ public class VRMenuController : MonoBehaviour
 
     void Update()
     {
-        // Check Left Controller: 'Y' Button (Two)
-        if (OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.LTouch))
+        // Check Left Controller: 'Start' Button (Start)
+        if (OVRInput.GetDown(OVRInput.Button.Start, OVRInput.Controller.LTouch))
         {
             ToggleMenu(leftController);
-        }
-
-        // Check Right Controller: 'B' Button (Two) 
-        // Note: The right Oculus button is reserved, so B or Joystick Click is standard
-        if (OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch))
-        {
-            ToggleMenu(rightController);
         }
     }
 
