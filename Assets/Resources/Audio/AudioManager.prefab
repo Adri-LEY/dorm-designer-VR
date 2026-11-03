@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1000000000000000000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4000000000000000000}
+  - component: {fileID: 1140000000000000000}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4000000000000000000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1140000000000000000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5458afc18cfa4ae4badd09e2893bee68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioManager
+  selectionClip: {fileID: 8300000, guid: 5a67478fabcf4872a96acbcd1ed82c05, type: 3}
+  deselectionClip: {fileID: 8300000, guid: 4496600d52c34fa1b076e55981bfb4e7, type: 3}
+  movementStartClip: {fileID: 8300000, guid: 4fad4845776c45188599c243b506199a, type: 3}
+  movementStopClip: {fileID: 8300000, guid: 10b2ad82755b4b3494f41e1b4465ba68, type: 3}
+  deletionClip: {fileID: 8300000, guid: aefdb4252e6446e597f07e11b7b8d4d6, type: 3}
+  wallImpactClip: {fileID: 8300000, guid: 0f4a5703d49e42d9a0a3bd505ac50d6d, type: 3}
+  masterVolume: 0.65
+  selectionVolume: 0.45
+  deselectionVolume: 0.4
+  movementStartVolume: 0.35
+  movementStopVolume: 0.35
+  deletionVolume: 0.4
+  wallImpactVolume: 0.3
+  playMovementStopSound: 0
+  minimumRepeatInterval: 0.12
+  wallImpactCooldown: 0.75
