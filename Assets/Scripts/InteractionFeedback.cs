@@ -5,52 +5,65 @@ public class InteractionFeedback : MonoBehaviour
     private Material mat;
     private Color originalColor;
     public Color highlightColor = Color.yellow;
-    private AudioSource audioSource;
-
-    // Keeps track of the currently selected object across the whole scene
-    private static InteractionFeedback currentActive;
+    public Color hoverColor = new Color(0.5f, 0.85f, 1f, 1f);
+    private AudioManager audioManager;
     private bool isBeingHovered = false;
+    private bool isSelected = false;
 
-    void Start()
+    private void Awake()
     {
-        mat = GetComponent<Renderer>().material;
-        originalColor = mat.color;
-        audioSource = GetComponent<AudioSource>();
+        Renderer targetRenderer = GetComponent<Renderer>();
+        if (targetRenderer != null)
+        {
+            mat = targetRenderer.material;
+            originalColor = mat.color;
+        }
+
+        audioManager = AudioManager.Instance;
+        if (audioManager == null)
+        {
+            Debug.LogError("AudioManager is unavailable; furniture feedback sounds cannot play.", this);
+        }
     }
 
     public void HighlightAndPlaySound()
     {
-        // If another object is already highlighted, turn it off first
-        if (currentActive != null && currentActive != this)
-        {
-            currentActive.ResetColor();
-        }
-
-        currentActive = this;
-        mat.color = highlightColor;
-        if (audioSource != null) audioSource.Play();
+        isSelected = true;
+        UpdateColor();
+        if (audioManager != null)
+            audioManager.PlaySelection();
     }
 
-    // We will link these to the ray's hover states
-    public void SetHovered() { isBeingHovered = true; }
-    public void SetUnhovered() { isBeingHovered = false; }
-
-    public void ResetColor()
+    public void SetHovered()
     {
-        mat.color = originalColor;
-        if (currentActive == this) currentActive = null;
+        isBeingHovered = true;
+        UpdateColor();
     }
 
-    void Update()
+    public void SetUnhovered()
     {
-        // If this is the highlighted object, and the ray is NOT pointing at it
-        if (currentActive == this && !isBeingHovered)
-        {
-            // Listen for a trigger pull (click) in empty space or on a non-interactable object
-            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) || OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger))
-            {
-                ResetColor();
-            }
-        }
+        isBeingHovered = false;
+        UpdateColor();
+    }
+
+    public void ClearSelection()
+    {
+        isSelected = false;
+        UpdateColor();
+        if (audioManager != null)
+            audioManager.PlayDeselection();
+    }
+
+    private void UpdateColor()
+    {
+        if (mat == null)
+            return;
+
+        if (isSelected)
+            mat.color = highlightColor;
+        else if (isBeingHovered)
+            mat.color = Color.Lerp(originalColor, hoverColor, 0.25f);
+        else
+            mat.color = originalColor;
     }
 }
