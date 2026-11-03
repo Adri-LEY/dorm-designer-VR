@@ -4043,7 +4043,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Furnitures
+  m_text: Show Furnitures
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -4070,8 +4070,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 19
+  m_fontSizeBase: 19
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -5357,7 +5357,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Decorations
+  m_text: Show Decorations
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -5384,8 +5384,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 19
+  m_fontSizeBase: 19
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -7143,7 +7143,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 8.544922, y: -0.11627197}
+  m_AnchoredPosition: {x: 8.544922, y: -0.11323547}
   m_SizeDelta: {x: 100, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &918368699
@@ -7163,11 +7163,11 @@ MonoBehaviour:
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 4
+  m_ChildAlignment: 1
   m_StartCorner: 0
   m_StartAxis: 0
   m_CellSize: {x: 100, y: 100}
-  m_Spacing: {x: 1, y: 1}
+  m_Spacing: {x: 10, y: 25}
   m_Constraint: 1
   m_ConstraintCount: 3
 --- !u!114 &918368700
@@ -8442,7 +8442,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a4cf87537dd7ad48bb2d26fff4ec53c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FurnitureMenuManager
-  allFurniture: []
+  allFurniture:
+  - itemName: Bed
+    category: Furniture
+  - itemName: Chair
+    category: Furniture
+  - itemName: Flowers
+    category: Decoration
+  - itemName: Wall clock
+    category: Decoration
+  - itemName: Desk
+    category: Furniture
   contentPanel: {fileID: 918368698}
   itemButtonPrefab: {fileID: 3211460636485489765, guid: f341439c6704c9f44aeb3e479b51bba4, type: 3}
 --- !u!1 &1230522444
@@ -14003,8 +14013,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 19
+  m_fontSizeBase: 19
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

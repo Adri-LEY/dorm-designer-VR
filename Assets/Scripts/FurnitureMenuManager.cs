@@ -8,8 +8,8 @@ using TMPro; // Assuming you use TextMeshPro for text
 public class FurnitureItem
 {
     public string itemName;
-    public string category; // e.g., "Chairs", "Tables", "Decor"
-    // public Sprite icon; // Uncomment to add images later
+    public string category; // e.g., "Chairs", "Tables", "Decor"; for now "Furnitures" and "Decorations" are the two categories
+    // public Sprite icon; // The icon to display on the button
     // public GameObject prefab; // The 3D model to spawn
 }
 
