@@ -48,7 +48,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb86ba9d4c5126e48bfef9b0c9550e9d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _interactorFilters: []
+  _interactorFilters:
+  - {fileID: 4173592376434874935}
   _maxInteractors: -1
   _maxSelectingInteractors: -1
   _data: {fileID: 0}
@@ -423,7 +424,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63eac14ec6418a342b67bea73ec6719e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InteractionFeedback
-  highlightColor: {r: 1, g: 1, b: 1, a: 1}
+  highlightColor: {r: 1, g: 0.45, b: 0.05, a: 1}
   hoverColor: {r: 0.5, g: 0.85, b: 1, a: 1}
 --- !u!114 &5479813369504759462
 MonoBehaviour:
