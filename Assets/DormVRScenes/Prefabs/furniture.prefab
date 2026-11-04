@@ -293,52 +293,16 @@ MonoBehaviour:
   _interactableView: {fileID: 740358502485253845}
   _whenHover:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 4173592376434874935}
-        m_TargetAssemblyTypeName: InteractionFeedback, Assembly-CSharp
-        m_MethodName: SetHovered
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
   _whenUnhover:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 4173592376434874935}
-        m_TargetAssemblyTypeName: InteractionFeedback, Assembly-CSharp
-        m_MethodName: SetUnhovered
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
   _whenSelect:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 5479813369504759462}
         m_TargetAssemblyTypeName: FurnitureCollisionHandler, Assembly-CSharp
         m_MethodName: OnGrabStart
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 4173592376434874935}
-        m_TargetAssemblyTypeName: InteractionFeedback, Assembly-CSharp
-        m_MethodName: HighlightAndPlaySound
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -387,18 +351,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 4173592376434874935}
-        m_TargetAssemblyTypeName: InteractionFeedback, Assembly-CSharp
-        m_MethodName: ClearSelection
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
   _whenInteractorViewAdded:
     m_PersistentCalls:
       m_Calls: []
@@ -423,8 +375,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63eac14ec6418a342b67bea73ec6719e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InteractionFeedback
-  highlightColor: {r: 1, g: 1, b: 1, a: 1}
+  outlineMaterial: {fileID: 2100000, guid: a1b46ff7cf62d7249bd2f443874bdaa9, type: 2}
+  highlightColor: {r: 1, g: 0.9893549, b: 0.1415093, a: 1}
+  selectedWidth: 0.012
   hoverColor: {r: 0.5, g: 0.85, b: 1, a: 1}
+  hoverWidth: 0.006
 --- !u!114 &5479813369504759462
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -449,7 +404,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 12734d864d68fa54cb4858e3455ed872, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FreezeRotationOnGrab
-  freezeRotX: 1
-  freezeRotY: 0
-  freezeRotZ: 1
-  freezePosY: 1

@@ -210,7 +210,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         }
         // -------------------------------------
 
-        TryApplyPose(position, _worldYaw, true));
+        TryApplyPose(position, _worldYaw, true);
     }
 
     private void ApplyYawSnap()

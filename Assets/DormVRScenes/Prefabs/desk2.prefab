@@ -50,7 +50,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: c2a4b62870273674f88b0e728c7d5520, type: 3}
       propertyPath: m_Name
-      value: SM_Computer_desk_7
+      value: desk2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -58,14 +58,14 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c2a4b62870273674f88b0e728c7d5520, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6056585555461262363}
+      addedObject: {fileID: 6177778172851974134}
   m_SourcePrefab: {fileID: 100100000, guid: c2a4b62870273674f88b0e728c7d5520, type: 3}
 --- !u!1 &5709970424797969557 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c2a4b62870273674f88b0e728c7d5520, type: 3}
   m_PrefabInstance: {fileID: 4898942264389960132}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &6056585555461262363
+--- !u!65 &6177778172851974134
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
