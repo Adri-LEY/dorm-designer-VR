@@ -16,7 +16,6 @@ public class ObjectSpawner : MonoBehaviour
     [Header("References")]
     public GameObject furnitureBase;
     public GameObject objectToSpawn;
-    public GameObject spawnedObject;
 
     public List<GameObject> allSpawned = new List<GameObject>();
     public void SpawnObject()
@@ -67,7 +66,7 @@ public class ObjectSpawner : MonoBehaviour
         // -----------------------
 
         // Instantiate using the dynamic position and rotation
-        spawnedObject = Instantiate(furnitureBase, finalSpawnPosition, finalSpawnRotation);
+        GameObject spawnedObject = Instantiate(furnitureBase, finalSpawnPosition, finalSpawnRotation);
 
         MeshFilter targetMesh = spawnedObject.GetComponent<MeshFilter>();
         MeshRenderer targetRenderer = spawnedObject.GetComponent<MeshRenderer>();
