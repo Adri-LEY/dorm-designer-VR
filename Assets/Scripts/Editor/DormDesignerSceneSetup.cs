@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Meta.WitAi.Configuration;
+using Meta.WitAi.Data.Configuration;
+using Oculus.Voice;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -14,6 +17,7 @@ using UnityEngine;
 public static class DormDesignerSceneSetup
 {
     private const string RoomsFolder = "Assets/DormVRScenes/Data/Rooms";
+    private const string VoiceFolder = "Assets/DormVRScenes/Data/Voice";
 
     [MenuItem("Tools/Dorm Designer/Set Up Open Scene")]
     public static void SetUpOpenScene()
@@ -40,6 +44,118 @@ public static class DormDesignerSceneSetup
         FillPlaceholderProductData(report);
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         Debug.Log("[Dorm Designer] " + report);
+    }
+
+    // ------------------------------------------------------------------ Voice
+
+    [MenuItem("Tools/Dorm Designer/Set Up Voice Commands")]
+    public static void SetUpVoiceCommands()
+    {
+        var report = new StringBuilder();
+
+        VoiceCommandController controller = Object.FindFirstObjectByType<VoiceCommandController>(FindObjectsInactive.Include);
+        GameObject host = controller != null ? controller.gameObject : GameObject.Find("VoiceCommands");
+        if (host == null)
+        {
+            host = new GameObject("VoiceCommands");
+            Undo.RegisterCreatedObjectUndo(host, "Create VoiceCommands");
+            report.AppendLine("- Created the 'VoiceCommands' object.");
+        }
+
+        OVRCameraRig rig = Object.FindFirstObjectByType<OVRCameraRig>(FindObjectsInactive.Include);
+        Transform rightController = FindChild(rig, "RightControllerAnchor");
+        Transform head = FindChild(rig, "CenterEyeAnchor");
+
+        // Speech: Meta Voice SDK + Wit.ai configuration.
+        AppVoiceExperience voice = Object.FindFirstObjectByType<AppVoiceExperience>(FindObjectsInactive.Include);
+        if (voice == null)
+        {
+            voice = Undo.AddComponent<AppVoiceExperience>(host);
+            report.AppendLine("- Added AppVoiceExperience (Meta Voice SDK).");
+        }
+
+        Undo.RecordObject(voice, "Set up AppVoiceExperience");
+        if (voice.RuntimeConfiguration == null) voice.RuntimeConfiguration = new WitRuntimeConfiguration();
+        if (voice.RuntimeConfiguration.witConfiguration == null)
+        {
+            string[] configs = AssetDatabase.FindAssets("t:WitConfiguration");
+            if (configs.Length > 0)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(configs[0]);
+                voice.RuntimeConfiguration.witConfiguration = AssetDatabase.LoadAssetAtPath<WitConfiguration>(path);
+                report.AppendLine($"- Using Wit.ai configuration '{path}'.");
+            }
+            else
+            {
+                report.AppendLine("- WARNING: no Wit.ai configuration found. Create one with Meta > Voice SDK > Get Started " +
+                                  "(paste your Wit.ai app's Server Access Token), then run this command again.");
+            }
+        }
+
+        EditorUtility.SetDirty(voice);
+
+        PointingTarget pointing = GetOrAdd<PointingTarget>(host);
+        Undo.RecordObject(pointing, "Set up PointingTarget");
+        if (pointing.pointer == null) pointing.pointer = rightController;
+        EditorUtility.SetDirty(pointing);
+
+        VoiceFeedbackDisplay feedback = GetOrAdd<VoiceFeedbackDisplay>(host);
+        Undo.RecordObject(feedback, "Set up VoiceFeedbackDisplay");
+        if (feedback.headCamera == null) feedback.headCamera = head;
+        if (feedback.markerMaterial == null) feedback.markerMaterial = GetOrCreateMarkerMaterial(feedback.markerColor);
+        EditorUtility.SetDirty(feedback);
+
+        if (controller == null)
+        {
+            controller = Undo.AddComponent<VoiceCommandController>(host);
+            report.AppendLine("- Added VoiceCommandController (hold left X, point, speak).");
+        }
+
+        Undo.RecordObject(controller, "Set up VoiceCommandController");
+        if (controller.voice == null) controller.voice = voice;
+        if (controller.catalog == null) controller.catalog = Object.FindFirstObjectByType<FurnitureMenuManager>(FindObjectsInactive.Include);
+        if (controller.spawner == null) controller.spawner = Object.FindFirstObjectByType<ObjectSpawner>(FindObjectsInactive.Include);
+        if (controller.pointing == null) controller.pointing = pointing;
+        if (controller.feedback == null) controller.feedback = feedback;
+        EditorUtility.SetDirty(controller);
+
+        if (rightController == null) report.AppendLine("- WARNING: RightControllerAnchor not found; assign PointingTarget > Pointer.");
+        if (head == null) report.AppendLine("- WARNING: CenterEyeAnchor not found; assign VoiceFeedbackDisplay > Head Camera.");
+
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        string text = report.Length > 0 ? report.ToString() : "- Everything was already set up.\n";
+        Debug.Log("[Dorm Designer] Voice setup:\n" + text);
+        EditorUtility.DisplayDialog("Dorm Designer voice setup", text + "\nSave the scene (Ctrl+S) to keep the changes.", "OK");
+    }
+
+    private static T GetOrAdd<T>(GameObject host) where T : Component
+    {
+        T existing = Object.FindFirstObjectByType<T>(FindObjectsInactive.Include);
+        return existing != null ? existing : Undo.AddComponent<T>(host);
+    }
+
+    private static Transform FindChild(Component root, string childName)
+    {
+        return root != null
+            ? root.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == childName)
+            : null;
+    }
+
+    private static Material GetOrCreateMarkerMaterial(Color color)
+    {
+        string path = VoiceFolder + "/VoiceTargetMarker.mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material != null) return material;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null) return null;
+
+        EnsureFolder(VoiceFolder);
+        material = new Material(shader) { name = "VoiceTargetMarker" };
+        material.SetColor("_BaseColor", color);
+        AssetDatabase.CreateAsset(material, path);
+        AssetDatabase.SaveAssets();
+        return material;
     }
 
     // ------------------------------------------------------------------ Room

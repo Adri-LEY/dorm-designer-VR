@@ -31,6 +31,9 @@ public sealed class RoomSelectionMenu : MonoBehaviour
     public bool showOnStart = true;
     [Tooltip("While the first choice is pending, the menu follows the head if the player looks away by more than this angle.")]
     public float followAngle = 35f;
+    [Tooltip("Seconds after the page opens during which the menu stays locked in front of the head " +
+             "(the headset pose is not known yet during the first frames, the head starts at floor level).")]
+    public float settleTime = 2f;
     public float followSpeed = 4f;
 
     private RectTransform _page;
@@ -41,6 +44,7 @@ public sealed class RoomSelectionMenu : MonoBehaviour
     private RoomPreset _pendingSwitch;
     private bool _firstChoicePending;
     private bool _following = true;
+    private float _followUntil;
 
     private void Awake()
     {
@@ -96,8 +100,17 @@ public sealed class RoomSelectionMenu : MonoBehaviour
         float distance = toMenu.magnitude;
         bool outOfView = forward.sqrMagnitude > 0.0001f && Vector3.Angle(forward, toMenu) > followAngle;
         bool wrongDistance = distance < menuController.headDistance * 0.5f || distance > menuController.headDistance * 2f;
+        // Height too: at launch the head is still at the rig origin (floor level) when the menu is first placed.
+        bool wrongHeight = Mathf.Abs(menu.position.y - target.y) > 0.2f;
+        bool settling = Time.unscaledTime < _followUntil;
 
-        if (outOfView || wrongDistance || _following)
+        if (settling)
+        {
+            // Stick to the head while tracking starts up, so the menu never stays where the head was at frame 0.
+            menuController.PlaceFacingHead(target);
+            _following = false;
+        }
+        else if (outOfView || wrongDistance || wrongHeight || _following)
         {
             _following = Vector3.Distance(menu.position, target) > 0.02f;
             menuController.PlaceFacingHead(Vector3.Lerp(menu.position, target, 1f - Mathf.Exp(-followSpeed * Time.deltaTime)));
@@ -209,6 +222,7 @@ public sealed class RoomSelectionMenu : MonoBehaviour
         _pendingSwitch = null;
         _firstChoicePending = atLaunch || roomBuilder == null || roomBuilder.CurrentRoom == null;
         _following = true;
+        _followUntil = Time.unscaledTime + settleTime;
 
         if (menuController != null)
         {
