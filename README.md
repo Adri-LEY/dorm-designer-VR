@@ -1,16 +1,47 @@
 # dorm-designer-VR
 
+## Setting up a scene (run once after pulling)
+
+Open `Assets/DormVRScenes/Main scene.unity`, then **Tools > Dorm Designer > Set Up Open Scene**, then save the scene. The command is safe to run again: it only adds what is missing and never overwrites product data you have already entered. It:
+
+- adds `RoomBuilder` to the `Room` object and links the floor and the 4 walls;
+- creates room presets in `Assets/DormVRScenes/Data/Rooms/` (only if that folder is empty);
+- adds `RoomSelectionMenu` next to `VRMenuController` (`UIMenuManager`) and `TurnSettings` to the camera rig;
+- fills placeholder description / sizes / prices / colours for catalogue items that have none (`MenuManager > FurnitureMenuManager > All Furniture`).
+
+## Room selection
+
+At launch the menu opens in front of the player on a "Choose your room" page and stays open until a room is picked. `RoomBuilder` then resizes the floor and walls to the preset's inner dimensions (the floor top stays at the `Room` object's height) and moves the player near the -Z wall, facing +Z, through Meta's `FirstPersonLocomotor`. The furniture menu then opens in front of the player.
+
+A **Room** tab in the furniture menu brings the page back. Switching to another room removes the placed furniture, so the first tap on a room card asks for confirmation when furniture is present. The page also has the **Turning: Smooth / Snap** toggle.
+
+Add a room: *Assets > Create > Dorm Designer > Room Preset*, fill in name, description and inner width (X) / depth (Z) / height in metres, and add it to `RoomSelectionMenu > Rooms`. Optional wall/floor colours apply when their alpha is above 0.
+
+## Furniture product sheet
+
+Clicking an item in the catalogue opens a product sheet (built at runtime inside the same canvas) with the picture, price, real dimensions, description, size buttons and colour swatches. **Place in room** spawns the item with the chosen options:
+
+- **Sizes** (`FurnitureSizeOption`: label, width/depth/height in cm, price). The model is rescaled per axis to the real dimensions. The longer horizontal dimension is matched to the model's longer side, so it doesn't matter whether a model was authored along X or Z. With no sizes, the model's own size and `Base Price` are shown.
+- **Colours** (`FurnitureColorOption`): *Original* keeps the materials, *Tint* multiplies the texture by the colour, *Solid* removes the texture, *CustomMaterial* uses `Override Material`. `Material Index` limits the change to one material slot (-1 = all).
+
+Each spawned furniture gets a `FurnitureInstanceInfo` (product, size, colour, price), which a future shopping list / budget view can read through `FurnitureInstanceInfo.All`. The placeholder data from the setup command uses the model's own size as the default option, so nothing is distorted until real dimensions are entered.
+
+## Camera turning
+
+`TurnSettings` switches every Meta `TurnerEventBroadcaster` in the rig to **smooth** turning (75°/s at full deflection by default, editable on the component). The Smooth / Snap choice is saved in `PlayerPrefs`. Camera turning is paused while a furniture item is selected, so the sticks only move and rotate the furniture.
+
+
 ## Joystick furniture manipulation
 
 Furniture keeps its Meta Interaction SDK ray hover and select interaction. While the ray is selecting a piece (right trigger), holding the right grip enables manipulation:
 
 - The right stick moves the object in room/world X and Z; the tracked hand/controller pose is not used.
-- The left stick applies one Y-axis rotation snap per deflection. Return the stick to its deadzone before another 15-degree step can occur.
+- The left stick turns the object smoothly around Y (90°/s at full deflection; small deflections turn slower for precise alignment). The old one-step-per-deflection behaviour is still available: set **Rotation Mode** to *Snap* on `ConstrainedFurnitureManipulator`.
 - Releasing the right grip confirms the current position. Releasing the trigger ends Meta ray selection.
 - B cancels the current selection/manipulation and restores the position and yaw from the start of the grip. Release and reselect to start again.
 - Press the right controller's A button while the furniture is selected to delete it. The left menu/catalogue action is reserved for later.
 
-The root `ConstrainedFurnitureManipulator` is the only component that writes the furniture Transform. `FurnitureManipulationState` reads Meta's `RayInteractable` selection state, and `FurnitureControllerInput` samples Quest Touch controls through `OVRInput`. The manipulator fixes world Y and sets world rotation to `(0, yaw, 0)`. Its Inspector fields configure movement speed, rotation snap angle, and deadzone. The Rigidbody is made kinematic with gravity disabled; the Meta ray's `MoveFromTargetProvider` is removed/cleared, and Meta's default pose-follow `Grabbable` transformer is replaced at runtime with a no-op transformer. The legacy `FreezeRotationOnGrab` and `FurnitureCollisionHandler` callbacks remain compatible with serialized scenes but no longer write the furniture Transform.
+The root `ConstrainedFurnitureManipulator` is the only component that writes the furniture Transform. `FurnitureManipulationState` reads Meta's `RayInteractable` selection state, and `FurnitureControllerInput` samples Quest Touch controls through `OVRInput`. The manipulator fixes world Y and sets world rotation to `(0, yaw, 0)`. Its Inspector fields configure movement speed, rotation mode/speed/snap angle, and deadzone. The Rigidbody is made kinematic with gravity disabled; the Meta ray's `MoveFromTargetProvider` is removed/cleared, and Meta's default pose-follow `Grabbable` transformer is replaced at runtime with a no-op transformer. The legacy `FreezeRotationOnGrab` and `FurnitureCollisionHandler` callbacks remain compatible with serialized scenes but no longer write the furniture Transform.
 
 ### Quest 3 verification
 

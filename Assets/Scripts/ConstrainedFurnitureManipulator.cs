@@ -3,7 +3,8 @@ using UnityEngine;
 
 /// <summary>
 /// Sole writer of a furniture root's world position and rotation.
-/// The object moves on the room's X/Z floor plane and turns only around world Y.
+/// The object moves on the room's X/Z floor plane and turns only around world Y
+/// (smoothly with the left stick by default, or in snap steps).
 /// </summary>
 [RequireComponent(typeof(FurnitureManipulationState), typeof(FurnitureControllerInput))]
 public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransformer
@@ -12,7 +13,19 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
     [Tooltip("Horizontal travel speed in world units per second.")]
     [SerializeField, Min(0f)] private float movementSpeed = 1.5f;
 
-    [Tooltip("Yaw change for each left-stick snap, in degrees.")]
+    public enum RotationMode { Smooth, Snap }
+
+    [Header("Rotation (left stick)")]
+    [Tooltip("Smooth: turns continuously while the stick is held. Snap: one step per deflection.")]
+    [SerializeField] private RotationMode rotationMode = RotationMode.Smooth;
+
+    [Tooltip("Smooth mode: turning speed at full stick deflection, in degrees per second.")]
+    [SerializeField, Range(10f, 360f)] private float rotationSpeed = 90f;
+
+    [Tooltip("Smooth mode: >1 makes small deflections turn slower for precise alignment.")]
+    [SerializeField, Range(1f, 3f)] private float rotationResponseExponent = 2f;
+
+    [Tooltip("Snap mode: yaw change for each left-stick snap, in degrees.")]
     [SerializeField, Min(1f)] private float rotationSnapAngle = 15f;
 
     [Tooltip("Stick values below this magnitude are ignored.")]
@@ -134,7 +147,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
             }
 
             ApplyHorizontalMovement();
-            ApplyYawSnap();
+            ApplyRotation();
         }
         else
         {
@@ -211,6 +224,35 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         // -------------------------------------
 
         TryApplyPose(position, _worldYaw, true);
+    }
+
+    private void ApplyRotation()
+    {
+        if (rotationMode == RotationMode.Snap)
+        {
+            ApplyYawSnap();
+        }
+        else
+        {
+            ApplySmoothYaw();
+        }
+    }
+
+    private void ApplySmoothYaw()
+    {
+        float horizontal = _input.LeftStickX;
+        float magnitude = Mathf.Abs(horizontal);
+        if (magnitude <= inputDeadzone)
+        {
+            return;
+        }
+
+        float adjusted = Mathf.Clamp01((magnitude - inputDeadzone) / (1f - inputDeadzone));
+        float speed = Mathf.Pow(adjusted, rotationResponseExponent) * rotationSpeed;
+        float candidateYaw = _worldYaw + Mathf.Sign(horizontal) * speed * Time.deltaTime;
+
+        // If the full step would hit a wall or another furniture, the furniture simply stops turning.
+        TryApplyPose(_furnitureTransform.position, candidateYaw, true);
     }
 
     private void ApplyYawSnap()

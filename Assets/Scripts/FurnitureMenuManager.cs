@@ -2,16 +2,28 @@ using System.Collections.Generic;
 using TMPro; // Assuming you use TextMeshPro for text
 using UnityEngine;
 using UnityEngine.UI;
-using Oculus.Interaction;
 
 // Defines what a furniture item is
 [System.Serializable]
 public class FurnitureItem
 {
     public string itemName;
-    public string category; // e.g., "Chairs", "Tables", "Decor"; for now "Furnitures" and "Decorations" are the two categories
+    public string category; // e.g., "Bed", "Chair", "Desk", "Wardrobe"
     public Sprite icon; // The icon to display on the button
     public GameObject prefab; // The 3D model to spawn
+
+    [Header("Product details")]
+    [TextArea(2, 4)]
+    public string description;
+
+    [Tooltip("Price in euros, used only when the item has no size options.")]
+    [Min(0f)] public float basePrice;
+
+    [Tooltip("Purchasable sizes. The first one is selected by default. Leave empty to use the model's own size.")]
+    public List<FurnitureSizeOption> sizes = new List<FurnitureSizeOption>();
+
+    [Tooltip("Purchasable colours / finishes. The first one is selected by default.")]
+    public List<FurnitureColorOption> colors = new List<FurnitureColorOption>();
 }
 
 public class FurnitureMenuManager : MonoBehaviour
@@ -23,15 +35,25 @@ public class FurnitureMenuManager : MonoBehaviour
     public Transform contentPanel;
     public GameObject itemButtonPrefab;
 
+    [Header("Detail panel")]
+    [Tooltip("Optional. Created automatically inside the menu canvas when left empty.")]
+    public FurnitureDetailPanel detailPanel;
+    [Tooltip("Height kept free at the top of the canvas for the tab bar, in canvas units.")]
+    public float detailPanelTopInset = 50f;
+
     [Header("Spawning System")]
     public ObjectSpawner spawner;
+
     void Start()
     {
+        EnsureDetailPanel();
         SelectTab("All");
     }
 
     public void SelectTab(string category)
     {
+        if (detailPanel != null) detailPanel.Hide();
+
         foreach (Transform child in contentPanel)
         {
             Destroy(child.gameObject);
@@ -43,6 +65,24 @@ public class FurnitureMenuManager : MonoBehaviour
             {
                 CreateButton(item);
             }
+        }
+    }
+
+    private void EnsureDetailPanel()
+    {
+        if (detailPanel == null && contentPanel != null)
+        {
+            Canvas canvas = contentPanel.GetComponentInParent<Canvas>(true);
+            if (canvas != null)
+            {
+                detailPanel = FurnitureDetailPanel.Create((RectTransform)canvas.transform, detailPanelTopInset);
+            }
+        }
+
+        if (detailPanel != null)
+        {
+            detailPanel.PlaceRequested -= SpawnFurniture;
+            detailPanel.PlaceRequested += SpawnFurniture;
         }
     }
 
@@ -67,25 +107,37 @@ public class FurnitureMenuManager : MonoBehaviour
         }
 
         TMP_Text btnText = newButton.GetComponentInChildren<TMP_Text>();
-        if (btnText != null) btnText.text = item.itemName;
+        if (btnText != null) btnText.text = FurnitureCatalogUtility.PrettyName(item.itemName);
 
-        // Setup the Standard Unity Button
+        // Setup the Standard Unity Button: open the product sheet first.
         Button standardBtn = newButton.GetComponent<Button>();
         if (standardBtn != null)
         {
             FurnitureItem capturedItem = item;
-            standardBtn.onClick.AddListener(() => SpawnFurniture(capturedItem));
+            standardBtn.onClick.AddListener(() => ShowDetails(capturedItem));
         }
     }
 
-    private void SpawnFurniture(FurnitureItem item)
+    public void ShowDetails(FurnitureItem item)
     {
-        Debug.Log("User selected to spawn: " + item.itemName);
+        if (detailPanel != null)
+        {
+            detailPanel.Show(item);
+        }
+        else
+        {
+            // No canvas found for the detail panel: keep the old one-click behaviour.
+            SpawnFurniture(item, null, null);
+        }
+    }
+
+    private void SpawnFurniture(FurnitureItem item, FurnitureSizeOption size, FurnitureColorOption color)
+    {
+        Debug.Log($"User selected to spawn: {item.itemName} ({size?.label ?? "model size"}, {color?.label ?? "original colour"})");
 
         if (spawner != null)
         {
-            spawner.objectToSpawn = item.prefab;
-            spawner.SpawnObject();
+            spawner.Spawn(item, size, color);
         }
     }
 }
