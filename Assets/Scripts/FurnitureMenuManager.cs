@@ -44,8 +44,15 @@ public class FurnitureMenuManager : MonoBehaviour
     [Header("Spawning System")]
     public ObjectSpawner spawner;
 
+    [Header("After placing")]
+    [Tooltip("Close the whole menu once a furniture has been placed, so the player sees it right away.")]
+    public bool closeMenuAfterPlacing = true;
+    [Tooltip("Found automatically when left empty.")]
+    public VRMenuController menuController;
+
     void Start()
     {
+        if (menuController == null) menuController = FindFirstObjectByType<VRMenuController>();
         EnsureDetailPanel();
         SelectTab("All");
     }
@@ -135,9 +142,21 @@ public class FurnitureMenuManager : MonoBehaviour
     {
         Debug.Log($"User selected to spawn: {item.itemName} ({size?.label ?? "model size"}, {color?.label ?? "original colour"})");
 
-        if (spawner != null)
+        if (spawner == null) return;
+
+        GameObject spawned = spawner.Spawn(item, size, color);
+        if (spawned == null)
         {
-            spawner.Spawn(item, size, color);
+            // Keep the sheet open so the player can move, pick a smaller size, and retry.
+            string message = string.IsNullOrEmpty(spawner.LastFailureMessage)
+                ? "This furniture could not be placed."
+                : spawner.LastFailureMessage;
+            if (detailPanel != null) detailPanel.ShowMessage(message);
+            return;
         }
+
+        // Back to the grid for next time, and get the menu out of the way.
+        if (detailPanel != null) detailPanel.Hide();
+        if (closeMenuAfterPlacing && menuController != null) menuController.Close();
     }
 }

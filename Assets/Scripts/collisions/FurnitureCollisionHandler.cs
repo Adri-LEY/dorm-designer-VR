@@ -45,6 +45,19 @@ public class FurnitureCollisionHandler : MonoBehaviour
             new Vector3(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.y), Mathf.Abs(lossyScale.z)));
 
         Vector3 worldCenter = position + rotation * centerOffset;
+        return IsBoxFree(worldCenter, halfExtents, rotation, transform, out blockingCollider);
+    }
+
+    /// <summary>
+    /// The single rule for "is this space free for a furniture box": no solid collider
+    /// overlaps it except the floor (and the furniture itself, when <paramref name="ignoreRoot"/> is given).
+    /// Used both while moving a furniture and before spawning one.
+    /// </summary>
+    public static bool IsBoxFree(
+        Vector3 worldCenter, Vector3 halfExtents, Quaternion rotation,
+        Transform ignoreRoot, out Collider blockingCollider)
+    {
+        blockingCollider = null;
         Collider[] overlaps = Physics.OverlapBox(
             worldCenter,
             halfExtents,
@@ -54,13 +67,13 @@ public class FurnitureCollisionHandler : MonoBehaviour
 
         foreach (Collider other in overlaps)
         {
-            if (other == furnitureCollider || other.transform == transform || other.transform.IsChildOf(transform))
+            if (ignoreRoot != null && (other.transform == ignoreRoot || other.transform.IsChildOf(ignoreRoot)))
             {
                 continue;
             }
 
             // The furniture is allowed to rest on the floor.
-            if (other.gameObject.name.ToLowerInvariant().Contains("floor"))
+            if (IsFloor(other))
             {
                 continue;
             }
@@ -71,6 +84,9 @@ public class FurnitureCollisionHandler : MonoBehaviour
 
         return true;
     }
+
+    public static bool IsFloor(Collider collider) =>
+        collider != null && collider.gameObject.name.ToLowerInvariant().Contains("floor");
 
     public void ReportBlockedPose(Collider obstacle, Vector3 furniturePosition)
     {

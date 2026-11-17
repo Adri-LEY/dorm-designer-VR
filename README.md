@@ -24,11 +24,19 @@ Clicking an item in the catalogue opens a product sheet (built at runtime inside
 - **Sizes** (`FurnitureSizeOption`: label, width/depth/height in cm, price). The model is rescaled per axis to the real dimensions. The longer horizontal dimension is matched to the model's longer side, so it doesn't matter whether a model was authored along X or Z. With no sizes, the model's own size and `Base Price` are shown.
 - **Colours** (`FurnitureColorOption`): *Original* keeps the materials, *Tint* multiplies the texture by the colour, *Solid* removes the texture, *CustomMaterial* uses `Override Material`. `Material Index` limits the change to one material slot (-1 = all).
 
+### Placing: free-space check and menu closing
+
+Before creating anything, `ObjectSpawner` searches for a free spot for the furniture's box at its final size. It starts straight ahead at `Spawn Distance`, then nearer or further, then to the sides (up to `Max Search Angle`, 90° by default), and finally turned by 90° for long items. A spot is accepted only if it is on the floor, not behind a wall, at least `Personal Space` from the head, and passes `FurnitureCollisionHandler.IsBoxFree`, the same rule used while moving furniture. That way a spawned piece can always be moved. If no spot is free, nothing is spawned and the product sheet shows a warning ("No free space for ... here"). Picking another size or colour hides it.
+
+After a successful placement the sheet closes and the menu closes too (`FurnitureMenuManager > Close Menu After Placing`). Press the menu button to reopen it on the grid.
+
 Each spawned furniture gets a `FurnitureInstanceInfo` (product, size, colour, price), which a future shopping list / budget view can read through `FurnitureInstanceInfo.All`. The placeholder data from the setup command uses the model's own size as the default option, so nothing is distorted until real dimensions are entered.
 
-## Camera turning
+## Camera turning and moving
 
 `TurnSettings` switches every Meta `TurnerEventBroadcaster` in the rig to **smooth** turning (75°/s at full deflection by default, editable on the component). The Smooth / Snap choice is saved in `PlayerPrefs`. Camera turning is paused while a furniture item is selected, so the sticks only move and rotate the furniture.
+
+**Pointing no longer blocks locomotion.** Meta's `BaseInteractors` prefab has a `ScrollLocomotionGate` whose `ActiveStateTracker` deactivates a controller's whole `LocomotionControllerInteractorGroup` (turn, teleport, slide) as soon as that controller's ray hovers anything. `LocomotionGate`, added automatically next to `TurnSettings`, replaces that tracker's condition at runtime (the prefab is in the package cache, so it can't be edited). Locomotion is now available while pointing at the menu or furniture. It is turned off on **both** controllers only while a furniture item is selected, so you no longer need to point both controllers at the item. Meta's other tracker in the same gate still hides the ray while you are turning or moving. Hand-tracking locomotion (`HoverInteractorsGate`) is unchanged. Other features can block locomotion temporarily with `LocomotionGate.AddBlocker(key)` / `RemoveBlocker(key)`.
 
 
 ## Joystick furniture manipulation

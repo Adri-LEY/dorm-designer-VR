@@ -14,7 +14,10 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
     private const float Margin = 12f;
     private const float RightColumnX = 196f;
 
-    /// <summary>Raised when the user confirms. Size / colour may be null when the item has none.</summary>
+    /// <summary>
+    /// Raised when the user presses "Place in room". Size / colour may be null when the item has none.
+    /// The listener decides what happens next: <see cref="Hide"/> on success, <see cref="ShowMessage"/> on failure.
+    /// </summary>
     public event Action<FurnitureItem, FurnitureSizeOption, FurnitureColorOption> PlaceRequested;
 
     public bool IsOpen => gameObject.activeSelf;
@@ -30,6 +33,9 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
     private RectTransform _sizeRow;
     private TextMeshProUGUI _colorHeader;
     private RectTransform _colorRow;
+    private Image _messageBox;
+    private TextMeshProUGUI _messageText;
+    private float _messageHideTime;
 
     private readonly List<Button> _sizeButtons = new List<Button>();
     private readonly List<Outline> _colorOutlines = new List<Outline>();
@@ -104,6 +110,33 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
 
         Button place = VRUIFactory.CreateButton("PlaceButton", root, "Place in room", Place, VRUIFactory.ConfirmColor, 20f);
         VRUIFactory.PlaceTopLeft((RectTransform)place.transform, Margin, 400f, contentWidth, 42f);
+
+        // Warning strip just above the Place button (covers the colour row while visible).
+        _messageBox = VRUIFactory.CreatePanel("Message", root, VRUIFactory.WarningColor, false);
+        VRUIFactory.PlaceTopLeft(_messageBox.rectTransform, Margin, 334f, contentWidth, 60f);
+        _messageText = VRUIFactory.CreateText("Text", _messageBox.transform, string.Empty, 15f, VRUIFactory.TextColor,
+            TextAlignmentOptions.MidlineLeft, FontStyles.Bold);
+        VRUIFactory.Stretch(_messageText.rectTransform, 10f, 10f, 4f, 4f);
+        _messageBox.gameObject.SetActive(false);
+    }
+
+    /// <summary>Shows a short warning above the Place button for <paramref name="seconds"/>.</summary>
+    public void ShowMessage(string message, float seconds = 5f)
+    {
+        _messageText.text = message;
+        _messageBox.gameObject.SetActive(true);
+        _messageBox.transform.SetAsLastSibling();
+        _messageHideTime = Time.unscaledTime + seconds;
+    }
+
+    private void HideMessage()
+    {
+        if (_messageBox != null) _messageBox.gameObject.SetActive(false);
+    }
+
+    private void Update()
+    {
+        if (_messageBox.gameObject.activeSelf && Time.unscaledTime >= _messageHideTime) HideMessage();
     }
 
     public void Show(FurnitureItem item)
@@ -120,6 +153,7 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
         _icon.sprite = item.icon;
         _icon.enabled = item.icon != null;
 
+        HideMessage();
         BuildSizeButtons();
         BuildColorSwatches();
         RefreshSelection();
@@ -130,6 +164,7 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
 
     public void Hide()
     {
+        HideMessage();
         gameObject.SetActive(false);
     }
 
@@ -194,12 +229,14 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
     private void SelectSize(int index)
     {
         _sizeIndex = index;
+        HideMessage(); // a smaller size may fit now
         RefreshSelection();
     }
 
     private void SelectColor(int index)
     {
         _colorIndex = index;
+        HideMessage();
         RefreshSelection();
     }
 
@@ -245,6 +282,5 @@ public sealed class FurnitureDetailPanel : MonoBehaviour
     {
         if (_item == null) return;
         PlaceRequested?.Invoke(_item, SelectedSize, SelectedColor);
-        Hide();
     }
 }

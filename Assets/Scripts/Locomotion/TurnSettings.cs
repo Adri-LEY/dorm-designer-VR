@@ -51,6 +51,9 @@ public sealed class TurnSettings : MonoBehaviour
 
     private void Awake()
     {
+        // Pointing at the menu / furniture must not block turning or moving; only a selection does.
+        if (FindFirstObjectByType<LocomotionGate>() == null) gameObject.AddComponent<LocomotionGate>();
+
         _mode = rememberChoice && PlayerPrefs.HasKey(PrefsKey)
             ? (TurnMode)PlayerPrefs.GetInt(PrefsKey)
             : defaultMode;
