@@ -3143,18 +3143,37 @@ MonoBehaviour:
   - label: 'Trigger: hold to stay selected'
     hand: 1
     localPosition: {x: 0.09, y: -0.05, z: 0.05}
+    requiresVoiceCommands: 0
   - label: 'Grip + stick: move'
     hand: 1
     localPosition: {x: 0.09, y: -0.02, z: -0.03}
+    requiresVoiceCommands: 0
   - label: 'A: delete'
     hand: 1
     localPosition: {x: 0.09, y: 0.02, z: 0}
+    requiresVoiceCommands: 0
   - label: 'B: cancel move'
     hand: 1
     localPosition: {x: 0.09, y: 0.02, z: 0.05}
-  - label: "Stick: rotate 15\xB0 (hold right grip)"
+    requiresVoiceCommands: 0
+  - label: 'Stick: rotate'
     hand: 0
     localPosition: {x: -0.09, y: 0.03, z: 0.03}
+    requiresVoiceCommands: 0
+  showGeneralTips: 1
+  generalTips:
+  - label: 'Hold X + point with right controller: voice command'
+    hand: 0
+    localPosition: {x: -0.09, y: 0.03, z: 0.03}
+    requiresVoiceCommands: 1
+  - label: 'Menu: furniture & rooms'
+    hand: 0
+    localPosition: {x: -0.09, y: 0, z: -0.01}
+    requiresVoiceCommands: 0
+  - label: 'Trigger: select furniture / UI'
+    hand: 1
+    localPosition: {x: 0.09, y: -0.05, z: 0.05}
+    requiresVoiceCommands: 0
 --- !u!4 &345555428
 Transform:
   m_ObjectHideFlags: 0
@@ -3362,6 +3381,13 @@ MonoBehaviour:
   pushToTalkButton: 1
   pushToTalkController: 1
   transcriptTimeout: 8
+  verboseLogging: 1
+  microphone: 0
+  customMicrophoneName: 
+  micStartTimeout: 1.5
+  minSpeechLevel: 0.02
+  listenUntilRelease: 1
+  simulatePushToTalk: 0
   catalog: {fileID: 1539325525}
   spawner: {fileID: 1539325526}
   pointing: {fileID: 381863872}
@@ -4030,7 +4056,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 8.544922, y: -0.076187134}
+  m_AnchoredPosition: {x: 8.544922, y: -0.06984711}
   m_SizeDelta: {x: 100, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &456286200
@@ -6005,7 +6031,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 614524479}
   m_HandleRect: {fileID: 614524478}
   m_Direction: 2
-  m_Value: 1
+  m_Value: 0
   m_Size: 0.9998533
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -12605,6 +12631,7 @@ MonoBehaviour:
   turnSettings: {fileID: 174432851}
   showOnStart: 1
   followAngle: 35
+  settleTime: 2
   followSpeed: 4
 --- !u!1 &1661204802
 GameObject:

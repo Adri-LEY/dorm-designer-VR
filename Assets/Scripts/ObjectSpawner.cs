@@ -45,13 +45,19 @@ public class ObjectSpawner : MonoBehaviour
     /// <summary>Why the last spawn failed, ready to show to the player. Empty after a success.</summary>
     public string LastFailureMessage { get; private set; } = string.Empty;
 
-    /// <summary>Number of spawned furniture still in the room (deleted ones are ignored).</summary>
+    /// <summary>Number of furniture in the room (deleted ones, including soft-deleted ones kept for undo, are ignored).</summary>
     public int SpawnedCount
     {
         get
         {
             allSpawned.RemoveAll(go => go == null);
-            return allSpawned.Count;
+            int count = 0;
+            foreach (GameObject go in allSpawned)
+            {
+                if (go.activeSelf) count++;
+            }
+
+            return count;
         }
     }
 
@@ -90,9 +96,28 @@ public class ObjectSpawner : MonoBehaviour
         return Create(placement, item, size, color, position, rotation);
     }
 
+    /// <summary>
+    /// Finds the free pose closest to <paramref name="target"/> for furniture already in the room (voice "move this here",
+    /// undo). The furniture ignores itself. Near a wall it is put with its back to the wall; otherwise it keeps
+    /// <paramref name="currentRotation"/> if possible.
+    /// </summary>
+    public bool TryFindFreePoseNear(GameObject furniture, Vector3 target, Quaternion currentRotation,
+        out Vector3 position, out Quaternion rotation)
+    {
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+        BoxCollider box = furniture != null ? furniture.GetComponent<BoxCollider>() : null;
+        if (box == null || headCamera == null) return false;
+
+        Placement placement = FromCollider(box, furniture.transform.lossyScale);
+        return TryFindPoseNear(placement, target, out position, out rotation, furniture.transform, currentRotation);
+    }
+
     /// <summary>Removes every spawned furniture (used when switching room).</summary>
     public void ClearSpawned()
     {
+        if (FurnitureHistory.Instance != null) FurnitureHistory.Instance.Clear();
+
         foreach (GameObject spawned in allSpawned)
         {
             if (spawned != null) Destroy(spawned);
@@ -143,10 +168,22 @@ public class ObjectSpawner : MonoBehaviour
             ? FurnitureCatalogUtility.ComputeScaleForSize(placement.SourceMesh.sharedMesh, modelScale, size)
             : modelScale;
 
-        Vector3 absScale = new Vector3(Mathf.Abs(placement.Scale.x), Mathf.Abs(placement.Scale.y), Mathf.Abs(placement.Scale.z));
-        placement.HalfExtents = Vector3.Scale(placement.SourceCollider.size * 0.5f, absScale);
-        placement.CenterOffset = Vector3.Scale(placement.SourceCollider.center, placement.Scale);
+        Placement box = FromCollider(placement.SourceCollider, placement.Scale);
+        placement.HalfExtents = box.HalfExtents;
+        placement.CenterOffset = box.CenterOffset;
         return true;
+    }
+
+    private static Placement FromCollider(BoxCollider collider, Vector3 scale)
+    {
+        Vector3 absScale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+        return new Placement
+        {
+            SourceCollider = collider,
+            Scale = scale,
+            HalfExtents = Vector3.Scale(collider.size * 0.5f, absScale),
+            CenterOffset = Vector3.Scale(collider.center, scale),
+        };
     }
 
     private GameObject Create(Placement placement, FurnitureItem item, FurnitureSizeOption size, FurnitureColorOption color,
@@ -186,6 +223,7 @@ public class ObjectSpawner : MonoBehaviour
         info.Initialize(item, size, color, createdMaterials);
 
         allSpawned.Add(spawnedObject);
+        FurnitureHistory.Instance.RecordPlaced(spawnedObject);
         LastFailureMessage = string.Empty;
         return spawnedObject;
     }
@@ -263,7 +301,8 @@ public class ObjectSpawner : MonoBehaviour
     /// Rings around <paramref name="target"/>, closest first. Orientation: back against a nearby wall when there
     /// is one, otherwise facing the player; the other orientations are tried too, at a small extra cost.
     /// </summary>
-    private bool TryFindPoseNear(Placement placement, Vector3 target, out Vector3 position, out Quaternion rotation)
+    private bool TryFindPoseNear(Placement placement, Vector3 target, out Vector3 position, out Quaternion rotation,
+        Transform ignoreRoot = null, Quaternion? keepRotation = null)
     {
         Vector3 head = headCamera.position;
         Vector3 toHead = head - target;
@@ -272,20 +311,27 @@ public class ObjectSpawner : MonoBehaviour
             ? Quaternion.LookRotation(toHead.normalized)
             : Quaternion.LookRotation(-FlatForward(headCamera));
 
+        // Existing furniture (move/undo) prefers to keep its rotation; new furniture faces the player.
+        Quaternion natural = keepRotation.HasValue
+            ? Quaternion.Euler(0f, keepRotation.Value.eulerAngles.y, 0f)
+            : facePlayer;
+
         var orientations = new List<(Quaternion rotation, float cost)>();
         if (TryFindNearbyWall(target, out Vector3 wallNormal))
         {
             Quaternion backToWall = Quaternion.LookRotation(wallNormal);
             orientations.Add((backToWall, 0f));
-            orientations.Add((facePlayer, 0.25f));
+            orientations.Add((natural, 0.25f));
+            if (keepRotation.HasValue) orientations.Add((facePlayer, 0.3f));
             if (allowQuarterTurn) orientations.Add((backToWall * Quaternion.Euler(0f, 90f, 0f), 0.4f));
         }
         else
         {
-            orientations.Add((facePlayer, 0f));
+            orientations.Add((natural, 0f));
+            if (keepRotation.HasValue) orientations.Add((facePlayer, 0.3f));
         }
 
-        if (allowQuarterTurn) orientations.Add((facePlayer * Quaternion.Euler(0f, 90f, 0f), 0.4f));
+        if (allowQuarterTurn) orientations.Add((natural * Quaternion.Euler(0f, 90f, 0f), 0.4f));
 
         var candidates = new List<Candidate>();
         const float ringStep = 0.1f;
@@ -306,7 +352,7 @@ public class ObjectSpawner : MonoBehaviour
             }
         }
 
-        return PickFirstValid(candidates, placement, head, target, out position, out rotation);
+        return PickFirstValid(candidates, placement, head, target, out position, out rotation, ignoreRoot);
     }
 
     /// <summary>Closest wall around a floor point (horizontal rays at knee height). Normal points into the room.</summary>
@@ -338,7 +384,7 @@ public class ObjectSpawner : MonoBehaviour
     /// the head, and is not separated by a wall from the player (or from the pointed target, when given).
     /// </summary>
     private bool PickFirstValid(List<Candidate> candidates, Placement placement, Vector3 head, Vector3? target,
-        out Vector3 position, out Quaternion rotation)
+        out Vector3 position, out Quaternion rotation, Transform ignoreRoot = null)
     {
         position = Vector3.zero;
         rotation = Quaternion.identity;
@@ -351,7 +397,7 @@ public class ObjectSpawner : MonoBehaviour
             if (!IsOnFloor(worldCenter)) continue;
             if (IsWallBetween(reference, worldCenter)) continue;
             if (!KeepsPersonalSpace(head, worldCenter, candidate.Rotation, placement.HalfExtents)) continue;
-            if (!FurnitureCollisionHandler.IsBoxFree(worldCenter, placement.HalfExtents, candidate.Rotation, null, out _)) continue;
+            if (!FurnitureCollisionHandler.IsBoxFree(worldCenter, placement.HalfExtents, candidate.Rotation, ignoreRoot, out _)) continue;
 
             position = candidate.Position;
             rotation = candidate.Rotation;

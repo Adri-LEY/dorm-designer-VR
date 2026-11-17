@@ -24,6 +24,9 @@ public sealed class PointingTarget : MonoBehaviour
 
     public LayerMask layers = ~0;
 
+    [Tooltip("Aim tolerance when pointing at a furniture (radius around the ray, metres).")]
+    [Min(0f)] public float furnitureAimTolerance = 0.06f;
+
     private RayInteractor _ray;
     private float _nextRayLookup;
 
@@ -78,6 +81,47 @@ public sealed class PointingTarget : MonoBehaviour
 
         return false;
     }
+
+    /// <summary>
+    /// The furniture the ray points at ("this"). The exact ray is tried first; if it hits nothing or the floor,
+    /// a thin cylinder around the ray (<see cref="furnitureAimTolerance"/>) makes small items easier to target.
+    /// A wall in front stops the search (no targeting through walls).
+    /// </summary>
+    public bool TryGetPointedFurniture(out FurnitureInstanceInfo furniture)
+    {
+        furniture = null;
+        if (!TryGetRay(out Ray ray)) return false;
+        Transform rig = pointer != null ? pointer.root : null;
+
+        float blockedAt = maxDistance;
+        RaycastHit[] hits = Physics.RaycastAll(ray, maxDistance, layers, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (RaycastHit hit in hits)
+        {
+            if (rig != null && hit.collider.transform.IsChildOf(rig)) continue;
+
+            furniture = hit.collider.GetComponentInParent<FurnitureInstanceInfo>();
+            if (furniture != null) return true;
+            if (IsWall(hit.collider)) blockedAt = hit.distance;
+            break;
+        }
+
+        if (furnitureAimTolerance <= 0f) return false;
+
+        RaycastHit[] near = Physics.SphereCastAll(ray, furnitureAimTolerance, blockedAt, layers, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(near, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (RaycastHit hit in near)
+        {
+            if (rig != null && hit.collider.transform.IsChildOf(rig)) continue;
+            furniture = hit.collider.GetComponentInParent<FurnitureInstanceInfo>();
+            if (furniture != null) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>The ray currently used for pointing (visible controller ray, or the pointer's forward).</summary>
+    public bool TryGetPointerRay(out Ray ray) => TryGetRay(out ray);
 
     private bool TryGetRay(out Ray ray)
     {

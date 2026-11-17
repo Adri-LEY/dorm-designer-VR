@@ -8,6 +8,9 @@ public enum VoiceAction
 {
     Unknown,
     Place,
+    Move,
+    Delete,
+    Undo,
 }
 
 /// <summary>Result of parsing one sentence.</summary>
@@ -15,6 +18,8 @@ public sealed class VoiceCommand
 {
     public string Transcript;
     public VoiceAction Action;
+
+    /// <summary>Catalogue item named in the sentence ("chair", "red chair"), or null ("this", "this furniture").</summary>
     public FurnitureItem Item;
     public FurnitureSizeOption Size;
     public FurnitureColorOption Color;
@@ -22,31 +27,81 @@ public sealed class VoiceCommand
     /// <summary>The object word the player used ("chair", "closet"...), for messages.</summary>
     public string SpokenObject;
 
-    /// <summary>True when the sentence points somewhere ("here", "there"...).</summary>
-    public bool IsDeictic;
+    /// <summary>True when a specific item was named ("the red chair"), not only a type ("the chair").</summary>
+    public bool NamesSpecificItem;
+
+    /// <summary>True when the sentence refers to the pointed object ("this", "that", "it").</summary>
+    public bool RefersToPointedObject;
+
+    /// <summary>True when the sentence refers to a pointed place ("here", "there").</summary>
+    public bool RefersToPointedPlace;
+
+    /// <summary>Kept for compatibility: object or place reference.</summary>
+    public bool IsDeictic => RefersToPointedObject || RefersToPointedPlace;
 }
 
 /// <summary>
-/// Turns a transcript such as "place a red chair here" into a <see cref="VoiceCommand"/>
-/// by matching words against the furniture catalogue. No cloud intent training needed:
-/// Wit.ai only provides the text, and the meaning is decided here so the team can extend it.
+/// Turns a transcript such as "place a red chair here", "move this furniture here", "delete this" or "undo"
+/// into a <see cref="VoiceCommand"/> by matching words against the furniture catalogue. No cloud intent training
+/// needed: Wit.ai only provides the text, and the meaning is decided here so the team can extend it.
 /// </summary>
 public static class VoiceCommandParser
 {
+    // ------------------------------------------------------------------ Vocabulary (extend freely)
+
     private static readonly HashSet<string> PlaceVerbs = new HashSet<string>
     {
-        "place", "put", "add", "spawn", "drop", "bring", "install", "position", "create",
+        "place", "add", "spawn", "drop", "install", "position", "create",
     };
 
-    // Multi-word ways to ask, checked on the whole sentence.
+    /// <summary>Verbs that mean "move" when they refer to an existing object ("put this there"), "place" otherwise ("put a chair here").</summary>
+    private static readonly HashSet<string> PutVerbs = new HashSet<string>
+    {
+        "put", "bring", "set",
+    };
+
+    private static readonly HashSet<string> MoveVerbs = new HashSet<string>
+    {
+        "move", "shift", "relocate", "drag", "slide", "push", "pull", "displace",
+    };
+
+    private static readonly HashSet<string> DeleteVerbs = new HashSet<string>
+    {
+        "delete", "remove", "erase", "destroy", "trash", "discard", "bin",
+    };
+
+    private static readonly string[] DeletePhrases =
+    {
+        "get rid of", "throw away", "throw out", "take away", "take out",
+    };
+
+    private static readonly string[] UndoPhrases =
+    {
+        "undo", "cancel that", "cancel the last", "go back", "revert", "take that back", "put it back", "oops",
+    };
+
+    // Multi-word ways to ask for a new item, checked on the whole sentence.
     private static readonly string[] PlacePhrases =
     {
         "i want", "i would like", "i'd like", "give me", "can i have", "could i have", "let me have",
     };
 
-    private static readonly HashSet<string> DeicticWords = new HashSet<string>
+    /// <summary>Words pointing at an object ("this furniture", "that", "it").</summary>
+    private static readonly HashSet<string> ObjectDeictics = new HashSet<string>
     {
-        "here", "there", "this", "that",
+        "this", "that", "it", "these", "those",
+    };
+
+    /// <summary>Words pointing at a place.</summary>
+    private static readonly HashSet<string> PlaceDeictics = new HashSet<string>
+    {
+        "here", "there",
+    };
+
+    /// <summary>Generic words for "a furniture" (no specific type).</summary>
+    private static readonly HashSet<string> GenericObjectWords = new HashSet<string>
+    {
+        "furniture", "thing", "object", "item", "piece", "one",
     };
 
     /// <summary>
@@ -56,13 +111,18 @@ public static class VoiceCommandParser
     private static readonly Dictionary<string, string> SoundAlikes = new Dictionary<string, string>
     {
         { "share", "chair" }, { "cheer", "chair" }, { "chare", "chair" }, { "cher", "chair" }, { "chai", "chair" }, { "shair", "chair" },
-        { "bad", "bed" }, { "bet", "bed" }, { "bid", "bed" }, { "bud", "bed" }, { "beds", "bed" },
+        { "bad", "bed" }, { "bet", "bed" }, { "bid", "bed" }, { "bud", "bed" },
         { "disk", "desk" }, { "dusk", "desk" }, { "desc", "desk" }, { "deck", "desk" },
         { "wardrop", "wardrobe" }, { "wardroom", "wardrobe" },
-        { "closed", "closet" }, { "closets", "closet" },
-        { "plays", "place" }, { "play", "place" }, { "plaice", "place" } /* "plays" is singularised to "play" */, { "please", "place" }, { "blaze", "place" }, { "lace", "place" },
+        { "closed", "closet" },
+        // "plays" is singularised to "play" before this table is applied.
+        { "play", "place" }, { "plaice", "place" }, { "please", "place" }, { "blaze", "place" }, { "lace", "place" },
         { "palace", "place" }, { "plate", "place" }, { "plus", "place" },
         { "hear", "here" }, { "hair", "here" },
+        { "delight", "delete" }, { "deleted", "delete" }, { "delite", "delete" }, { "dilute", "delete" },
+        { "moved", "move" }, { "removed", "remove" },
+        { "undue", "undo" }, { "undone", "undo" },
+        { "furnitures", "furniture" }, { "furnishing", "furniture" },
     };
 
     /// <summary>Two-word mishearings merged into one word ("war drop" -> "wardrobe").</summary>
@@ -70,6 +130,7 @@ public static class VoiceCommandParser
     {
         { "war drop", "wardrobe" }, { "war robe", "wardrobe" }, { "ward robe", "wardrobe" }, { "word robe", "wardrobe" },
         { "war drobe", "wardrobe" }, { "clothes it", "closet" }, { "close it", "closet" },
+        { "the lead", "delete" }, { "de lead", "delete" }, { "and do", "undo" }, { "un do", "undo" }, { "on do", "undo" },
     };
 
     /// <summary>Extra words for each category (lower case). Extend freely.</summary>
@@ -81,6 +142,8 @@ public static class VoiceCommandParser
         { "wardrobe", new[] { "wardrobe", "closet", "cupboard", "cabinet", "armoire", "dresser" } },
     };
 
+    // ------------------------------------------------------------------ Parsing
+
     public static VoiceCommand Parse(string transcript, IReadOnlyList<FurnitureItem> catalog)
     {
         var command = new VoiceCommand { Transcript = transcript ?? string.Empty, Action = VoiceAction.Unknown };
@@ -89,36 +152,36 @@ public static class VoiceCommandParser
         if (words.Count == 0) return command;
 
         string sentence = " " + string.Join(" ", words) + " ";
-        bool hasVerb = words.Any(w => PlaceVerbs.Contains(w) || PlaceVerbs.Any(v => IsCloseEnough(w, v))) ||
-                       PlacePhrases.Any(p => sentence.Contains(" " + p + " "));
-        command.IsDeictic = words.Any(DeicticWords.Contains);
+        command.RefersToPointedObject = words.Any(ObjectDeictics.Contains);
+        command.RefersToPointedPlace = words.Any(PlaceDeictics.Contains);
 
-        // Find the best matching item. A category word (or synonym) is required to avoid
-        // "place it here" picking a random item because of a colour word.
+        // Which catalogue item is named, if any ("a chair", "the red chair", "this closet").
         int bestScore = 0;
         foreach (FurnitureItem item in catalog)
         {
             if (item == null || item.prefab == null) continue;
 
-            int score = ScoreItem(item, words, out string spokenNoun);
+            int score = ScoreItem(item, words, out string spokenNoun, out bool specific);
             if (score > bestScore)
             {
                 bestScore = score;
                 command.Item = item;
                 command.SpokenObject = spokenNoun;
+                command.NamesSpecificItem = specific;
             }
         }
 
         if (command.Item == null)
         {
             command.SpokenObject = GuessObjectWord(words);
+            if (command.SpokenObject != null && (GenericObjectWords.Contains(command.SpokenObject) ||
+                                                 ObjectDeictics.Contains(command.SpokenObject)))
+            {
+                command.SpokenObject = null; // "this furniture" / "the thing": not an unknown object
+            }
         }
 
-        // "Place a chair here" and also just "a chair here" / "chair".
-        if (hasVerb || command.Item != null)
-        {
-            command.Action = VoiceAction.Place;
-        }
+        command.Action = DecideAction(words, sentence, command);
 
         if (command.Item != null)
         {
@@ -127,6 +190,52 @@ public static class VoiceCommandParser
         }
 
         return command;
+    }
+
+    /// <summary>Order matters: undo, then delete, then move, then place.</summary>
+    private static VoiceAction DecideAction(List<string> words, string sentence, VoiceCommand command)
+    {
+        if (UndoPhrases.Any(p => sentence.Contains(" " + p + " "))) return VoiceAction.Undo;
+
+        if (HasVerb(words, DeleteVerbs) || DeletePhrases.Any(p => sentence.Contains(" " + p + " "))) return VoiceAction.Delete;
+
+        if (HasVerb(words, MoveVerbs)) return VoiceAction.Move;
+
+        bool explicitPlace = HasVerb(words, PlaceVerbs) || PlacePhrases.Any(p => sentence.Contains(" " + p + " "));
+        if (explicitPlace) return VoiceAction.Place;
+
+        if (HasVerb(words, PutVerbs))
+        {
+            // "put this here" / "put the red chair there" -> move an existing one; "put a chair here" -> new one.
+            bool existingObject = command.RefersToPointedObject || IsDefinite(words, command.SpokenObject) ||
+                                  (command.Item == null && words.Any(GenericObjectWords.Contains));
+            return existingObject ? VoiceAction.Move : VoiceAction.Place;
+        }
+
+        // No verb: "a chair here" / "chair" still places one.
+        return command.Item != null ? VoiceAction.Place : VoiceAction.Unknown;
+    }
+
+    private static bool HasVerb(List<string> words, HashSet<string> verbs) =>
+        words.Any(w => verbs.Contains(w) || verbs.Any(v => IsCloseEnough(w, v)));
+
+    /// <summary>"the chair" (an existing one) vs "a chair" (a new one).</summary>
+    private static bool IsDefinite(List<string> words, string noun)
+    {
+        if (string.IsNullOrEmpty(noun)) return false;
+
+        for (int i = 0; i < words.Count; i++)
+        {
+            if (words[i] != noun && !IsCloseEnough(words[i], noun)) continue;
+            for (int back = 1; back <= 3 && i - back >= 0; back++)
+            {
+                string previous = words[i - back];
+                if (previous == "the" || ObjectDeictics.Contains(previous)) return true;
+                if (previous == "a" || previous == "an" || previous == "another" || previous == "new") return false;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>All the object words the parser knows, for help messages ("chair, bed, desk...").</summary>
@@ -138,9 +247,18 @@ public static class VoiceCommandParser
             .Distinct();
     }
 
-    private static int ScoreItem(FurnitureItem item, List<string> words, out string spokenNoun)
+    /// <summary>True when <paramref name="category"/> (a catalogue category) is the one the player named with <paramref name="spokenNoun"/>.</summary>
+    public static bool CategoryMatches(string category, string spokenNoun)
+    {
+        if (string.IsNullOrEmpty(category) || string.IsNullOrEmpty(spokenNoun)) return false;
+        string key = category.ToLowerInvariant();
+        return key == spokenNoun || (CategorySynonyms.TryGetValue(key, out string[] synonyms) && synonyms.Contains(spokenNoun));
+    }
+
+    private static int ScoreItem(FurnitureItem item, List<string> words, out string spokenNoun, out bool specific)
     {
         spokenNoun = null;
+        specific = false;
         int score = 0;
 
         // Category (with synonyms): strong signal.
@@ -163,11 +281,18 @@ public static class VoiceCommandParser
         {
             if (nameWord.Length < 3 || !words.Contains(nameWord)) continue;
             score += 2;
-            if (spokenNoun == null && CategorySynonyms.Values.Any(s => s.Contains(nameWord))) spokenNoun = nameWord;
+
+            bool isTypeWord = CategorySynonyms.Values.Any(s => s.Contains(nameWord));
+            if (!isTypeWord) specific = true; // "red", "double", "modern"...
+            if (spokenNoun == null && isTypeWord) spokenNoun = nameWord;
         }
 
         // A category word is mandatory: a colour alone is not enough.
-        if (spokenNoun == null) return 0;
+        if (spokenNoun == null)
+        {
+            specific = false;
+            return 0;
+        }
 
         // Small bonus when a size or colour option of this item was mentioned ("double bed").
         if (MatchOption(item.sizes, s => s.label, words) != null) score += 1;
@@ -199,10 +324,11 @@ public static class VoiceCommandParser
 
     private static string GuessObjectWord(List<string> words)
     {
-        // The word right after "a/an/the/some" is usually the object ("place a sofa here" -> sofa).
+        // The word right after "a/an/the/some/this" is usually the object ("place a sofa here" -> sofa).
         for (int i = 0; i < words.Count - 1; i++)
         {
-            if (words[i] == "a" || words[i] == "an" || words[i] == "the" || words[i] == "some")
+            string w = words[i];
+            if (w == "a" || w == "an" || w == "the" || w == "some" || w == "this" || w == "that")
             {
                 return words[i + 1];
             }
@@ -210,6 +336,8 @@ public static class VoiceCommandParser
 
         return null;
     }
+
+    // ------------------------------------------------------------------ Words
 
     /// <summary>Lower case words without punctuation; plurals reduced ("chairs" -> "chair").</summary>
     public static List<string> Tokenize(string text)
@@ -288,7 +416,7 @@ public static class VoiceCommandParser
     // Words ending in "s" that are not plurals.
     private static readonly HashSet<string> NotPlural = new HashSet<string>
     {
-        "this", "his", "is", "was", "has", "does", "its", "us", "yes", "plus", "as",
+        "this", "his", "is", "was", "has", "does", "its", "us", "yes", "plus", "as", "oops", "those", "these",
     };
 
     private static string Singular(string word)

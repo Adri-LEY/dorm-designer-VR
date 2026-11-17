@@ -12,7 +12,12 @@ using UnityEngine;
 /// <summary>
 /// Push-to-talk voice commands combined with pointing ("put that there").
 ///
-/// Hold the left X button, point the right controller at the floor and say "place a chair here".
+/// Hold the left X button and speak; the spots are taken when X is released:
+/// - "Place a chair here": right controller points at the floor.
+/// - "Move this furniture here": right controller points at the furniture, left controller at the new spot.
+///   Also "move the red chair here" (furniture named instead of pointed).
+/// - "Delete this furniture": right controller points at it (or "delete the red chair").
+/// - "Undo": cancels the last place / move / delete (including joystick moves and the A button).
 /// While held, a marker shows the pointed spot and Wit.ai (Meta Voice SDK, AppVoiceExperience) listens.
 /// On release, the spot is frozen and the final transcript is parsed by <see cref="VoiceCommandParser"/>;
 /// the furniture is then placed at the closest valid spot with <see cref="ObjectSpawner.SpawnNear"/>.
@@ -73,7 +78,10 @@ public sealed class VoiceCommandController : MonoBehaviour
     [Header("References")]
     public FurnitureMenuManager catalog;
     public ObjectSpawner spawner;
+    [Tooltip("Right controller: the furniture to move/delete, or the spot to place at.")]
     public PointingTarget pointing;
+    [Tooltip("Left controller: destination of a move. Created automatically if empty.")]
+    public PointingTarget leftPointing;
     public VoiceFeedbackDisplay feedback;
 
     [Header("Testing without a microphone")]
@@ -86,6 +94,18 @@ public sealed class VoiceCommandController : MonoBehaviour
     private State _state = State.Idle;
     private Vector3? _liveTarget;
     private Vector3? _frozenTarget;
+    private FurnitureInstanceInfo _liveFurniture;
+    private FurnitureInstanceInfo _frozenFurniture;
+    private Vector3? _liveLeftTarget;
+    private Vector3? _frozenLeftTarget;
+
+    /// <summary>What the player pointed at when the command was given.</summary>
+    private struct PointedTargets
+    {
+        public Vector3? RightSpot;
+        public FurnitureInstanceInfo RightFurniture;
+        public Vector3? LeftSpot;
+    }
     private float _timeoutAt;
     private VoiceServiceRequest _request;
     private float _maxMicLevel;
@@ -103,6 +123,7 @@ public sealed class VoiceCommandController : MonoBehaviour
     {
         if (catalog == null) catalog = FindFirstObjectByType<FurnitureMenuManager>();
         if (spawner == null) spawner = FindFirstObjectByType<ObjectSpawner>();
+        EnsureLeftPointing();
 
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Microphone))
@@ -129,6 +150,33 @@ public sealed class VoiceCommandController : MonoBehaviour
             config.minKeepAliveTimeInSeconds = max;
             config.minTranscriptionKeepAliveTimeInSeconds = max;
             Log($"Push-to-talk: recording continues until X is released (max {max:0} s).");
+        }
+    }
+
+    private void EnsureLeftPointing()
+    {
+        if (leftPointing != null) return;
+
+        OVRCameraRig rig = FindFirstObjectByType<OVRCameraRig>();
+        Transform leftAnchor = rig != null ? rig.leftControllerAnchor : null;
+        if (leftAnchor == null && rig != null)
+        {
+            leftAnchor = rig.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "LeftControllerAnchor");
+        }
+
+        if (leftAnchor == null)
+        {
+            Debug.LogWarning("VoiceCommandController: LeftControllerAnchor not found; \"move ... here\" needs a left pointer.", this);
+            return;
+        }
+
+        leftPointing = gameObject.AddComponent<PointingTarget>();
+        leftPointing.pointer = leftAnchor;
+        if (pointing != null)
+        {
+            leftPointing.maxDistance = pointing.maxDistance;
+            leftPointing.wallStandOff = pointing.wallStandOff;
+            leftPointing.layers = pointing.layers;
         }
     }
 
@@ -336,6 +384,8 @@ public sealed class VoiceCommandController : MonoBehaviour
         // synchronously inside ActivateImmediately, and resetting afterwards would erase that signal.
         _state = State.Listening;
         _frozenTarget = null;
+        _frozenFurniture = null;
+        _frozenLeftTarget = null;
         _micStarted = false;
         _maxMicLevel = 0f;
         _listenStartedAt = Time.unscaledTime;
@@ -368,6 +418,8 @@ public sealed class VoiceCommandController : MonoBehaviour
     {
         // "Here" = where the player points when they finish speaking.
         _frozenTarget = _liveTarget;
+        _frozenFurniture = _liveFurniture;
+        _frozenLeftTarget = _liveLeftTarget;
         _state = State.WaitingForTranscript;
         _timeoutAt = Time.unscaledTime + transcriptTimeout;
         Pulse();
@@ -381,22 +433,43 @@ public sealed class VoiceCommandController : MonoBehaviour
         _liveTarget = null;
         if (pointing != null && pointing.TryGetTarget(out Vector3 point, out _)) _liveTarget = point;
 
+        // Furniture under the right ray and the left spot only matter while a command is being given.
+        bool needsAll = _state == State.Listening;
+        _liveFurniture = null;
+        _liveLeftTarget = null;
+        if (needsAll)
+        {
+            if (pointing != null && pointing.TryGetPointedFurniture(out FurnitureInstanceInfo furniture)) _liveFurniture = furniture;
+            if (leftPointing != null && leftPointing.TryGetTarget(out Vector3 leftPoint, out _)) _liveLeftTarget = leftPoint;
+        }
+
         if (feedback == null) return;
 
-        Vector3? shown = _state == State.Listening ? _liveTarget
-            : _state == State.WaitingForTranscript ? _frozenTarget
-            : null;
+        bool listening = _state == State.Listening;
+        bool waiting = _state == State.WaitingForTranscript;
+        Vector3? right = listening ? _liveTarget : waiting ? _frozenTarget : null;
+        FurnitureInstanceInfo pointedFurniture = listening ? _liveFurniture : waiting ? _frozenFurniture : null;
+        Vector3? left = listening ? _liveLeftTarget : waiting ? _frozenLeftTarget : null;
 
-        if (shown.HasValue)
+        // Blue = right controller spot (hidden when it points at a furniture: its outline shows the target).
+        if (right.HasValue && pointedFurniture == null)
         {
-            feedback.ShowMarker(shown.Value);
-            if (_state == State.Listening) feedback.SetLabelAnchor(shown);
+            feedback.ShowMarker(right.Value);
+            if (listening) feedback.SetLabelAnchor(right);
         }
         else
         {
-            feedback.HideMarker();
+            feedback.HidePrimaryMarker();
         }
+
+        // Orange = left controller spot (destination of a move).
+        if (left.HasValue) feedback.ShowSecondaryMarker(left.Value);
+        else feedback.HideSecondaryMarker();
     }
+
+    private PointedTargets CurrentTargets(bool frozen) => frozen
+        ? new PointedTargets { RightSpot = _frozenTarget, RightFurniture = _frozenFurniture, LeftSpot = _frozenLeftTarget }
+        : new PointedTargets { RightSpot = _liveTarget, RightFurniture = _liveFurniture, LeftSpot = _liveLeftTarget };
 
     // ------------------------------------------------------------------ Wit.ai events
 
@@ -413,8 +486,8 @@ public sealed class VoiceCommandController : MonoBehaviour
         if (_state == State.Idle) return;
         _request = null;
 
-        // Wit.ai may stop on silence before the button is released: use the spot pointed right now.
-        Vector3? target = _state == State.Listening ? _liveTarget : _frozenTarget;
+        // Wit.ai may stop on silence before the button is released: use what is pointed right now.
+        PointedTargets targets = CurrentTargets(frozen: _state != State.Listening);
         _state = State.Idle;
 
         // Near-silent recordings make Wit.ai guess random words: ignore them instead of acting on them.
@@ -427,7 +500,7 @@ public sealed class VoiceCommandController : MonoBehaviour
             return;
         }
 
-        Execute(text, target);
+        Execute(text, targets);
     }
 
     private void HandleStartListening() => MarkMicWorking("start event");
@@ -483,8 +556,12 @@ public sealed class VoiceCommandController : MonoBehaviour
     /// <summary>Runs a command as if it had been spoken, at the spot currently pointed at.</summary>
     public void RunTextCommand(string text)
     {
+        // Measure everything as if listening, so typed tests can move/delete too.
+        State previous = _state;
+        _state = State.Listening;
         UpdateLiveTarget();
-        Execute(text, _liveTarget);
+        _state = previous;
+        Execute(text, CurrentTargets(frozen: false));
     }
 
     [ContextMenu("Debug: Start Listening (like pressing X)")]
@@ -511,23 +588,45 @@ public sealed class VoiceCommandController : MonoBehaviour
         RunTextCommand(testCommand);
     }
 
-    private void Execute(string transcript, Vector3? target)
+    private void Execute(string transcript, PointedTargets targets)
     {
         StartCoroutine(HideMarkerSoon());
         VoiceCommand command = VoiceCommandParser.Parse(transcript, catalog != null ? catalog.allFurniture : null);
-        Debug.Log($"[Voice] \"{transcript}\" -> {command.Action} {command.Item?.itemName ?? "(no item)"} at {target?.ToString() ?? "(no target)"}");
+        Debug.Log($"[Voice] \"{transcript}\" -> {command.Action} {command.Item?.itemName ?? "(no item)"} " +
+                  $"right={targets.RightSpot?.ToString() ?? "-"} furniture={targets.RightFurniture?.ItemName ?? "-"} " +
+                  $"left={targets.LeftSpot?.ToString() ?? "-"}");
 
         if (string.IsNullOrWhiteSpace(transcript))
         {
-            Report(command, false, "I didn't hear anything. Hold X while you speak.", target);
+            Report(command, false, "I didn't hear anything. Hold X while you speak.", targets.RightSpot);
             return;
         }
 
-        if (command.Action != VoiceAction.Place)
+        switch (command.Action)
         {
-            Report(command, false, $"Heard \"{transcript}\".\nFor now I can place furniture: try \"Place a chair here\".", target);
-            return;
+            case VoiceAction.Place:
+                ExecutePlace(command, targets);
+                break;
+            case VoiceAction.Move:
+                ExecuteMove(command, targets);
+                break;
+            case VoiceAction.Delete:
+                ExecuteDelete(command, targets);
+                break;
+            case VoiceAction.Undo:
+                ExecuteUndo(command);
+                break;
+            default:
+                Report(command, false,
+                    $"Heard \"{transcript}\".\nTry \"Place a chair here\", \"Move this here\", \"Delete this\" or \"Undo\".",
+                    targets.RightSpot);
+                break;
         }
+    }
+
+    private void ExecutePlace(VoiceCommand command, PointedTargets targets)
+    {
+        Vector3? target = targets.RightSpot ?? targets.LeftSpot;
 
         if (command.Item == null)
         {
@@ -555,6 +654,112 @@ public sealed class VoiceCommandController : MonoBehaviour
         string itemName = FurnitureCatalogUtility.PrettyName(command.Item.itemName);
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMovementStop();
         Report(command, true, string.IsNullOrEmpty(details) ? $"Placed {itemName}" : $"Placed {itemName} ({details})", spawned.transform.position);
+    }
+
+    private void ExecuteMove(VoiceCommand command, PointedTargets targets)
+    {
+        FurnitureInstanceInfo furniture = ResolveFurniture(command, targets.RightFurniture, out string error);
+        if (furniture == null)
+        {
+            Report(command, false, error, targets.RightSpot);
+            return;
+        }
+
+        string name = FurnitureCatalogUtility.PrettyName(furniture.ItemName);
+        if (!targets.LeftSpot.HasValue)
+        {
+            Report(command, false, $"Point at the new spot for the {name} with the left controller.", furniture.transform.position);
+            return;
+        }
+
+        GameObject go = furniture.gameObject;
+        var manipulator = go.GetComponentInChildren<ConstrainedFurnitureManipulator>();
+        if (spawner == null || manipulator == null ||
+            !spawner.TryFindFreePoseNear(go, targets.LeftSpot.Value, go.transform.rotation, out Vector3 position, out Quaternion rotation))
+        {
+            Report(command, false, $"No free space for the {name} around that spot.", targets.LeftSpot);
+            return;
+        }
+
+        Vector3 previousPosition = go.transform.position;
+        Quaternion previousRotation = go.transform.rotation;
+        manipulator.MoveTo(position, rotation.eulerAngles.y);
+        FurnitureHistory.Instance.RecordMoved(go, previousPosition, previousRotation);
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayMovementStop();
+        Report(command, true, $"Moved {name}", position);
+    }
+
+    private void ExecuteDelete(VoiceCommand command, PointedTargets targets)
+    {
+        FurnitureInstanceInfo furniture = ResolveFurniture(command, targets.RightFurniture, out string error);
+        if (furniture == null)
+        {
+            Report(command, false, error, targets.RightSpot);
+            return;
+        }
+
+        string name = FurnitureCatalogUtility.PrettyName(furniture.ItemName);
+        Vector3 position = furniture.transform.position;
+        var manipulator = furniture.GetComponentInChildren<ConstrainedFurnitureManipulator>();
+        if (manipulator != null)
+        {
+            manipulator.Delete(); // plays the delete sound and records it for undo
+        }
+        else
+        {
+            FurnitureHistory.Instance.Delete(furniture.gameObject);
+        }
+
+        Report(command, true, $"Deleted {name}\nSay \"undo\" to bring it back.", position);
+    }
+
+    private void ExecuteUndo(VoiceCommand command)
+    {
+        bool undone = FurnitureHistory.Instance.TryUndo(spawner, out string message);
+        if (undone && AudioManager.Instance != null) AudioManager.Instance.PlayMovementStop();
+        Report(command, undone, message, null);
+    }
+
+    /// <summary>
+    /// Which furniture the command is about. Pointing wins ("this", or pointing at a chair while saying "the chair");
+    /// otherwise the furniture is found by name ("the red chair") or type ("the chair"), preferring the one closest to
+    /// where the right controller points, then the one closest to the player.
+    /// </summary>
+    private FurnitureInstanceInfo ResolveFurniture(VoiceCommand command, FurnitureInstanceInfo pointed, out string error)
+    {
+        error = null;
+
+        if (command.Item == null)
+        {
+            if (pointed != null) return pointed;
+            error = "Point at the furniture with the right controller,\nor name it (\"the red chair\").";
+            return null;
+        }
+
+        bool Matches(FurnitureInstanceInfo f) => command.NamesSpecificItem
+            ? f.ItemName == command.Item.itemName
+            : f.ItemName == command.Item.itemName || VoiceCommandParser.CategoryMatches(f.Category, command.SpokenObject);
+
+        if (pointed != null && Matches(pointed)) return pointed;
+
+        var candidates = FurnitureInstanceInfo.All.Where(f => f != null && f.isActiveAndEnabled && Matches(f)).ToList();
+        if (candidates.Count == 0)
+        {
+            string what = command.NamesSpecificItem
+                ? FurnitureCatalogUtility.PrettyName(command.Item.itemName)
+                : (command.SpokenObject ?? "furniture like that");
+            error = $"There is no {what} in the room.";
+            return null;
+        }
+
+        if (pointing != null && pointing.TryGetPointerRay(out Ray ray))
+        {
+            return candidates.OrderBy(f => Vector3.Angle(ray.direction, f.transform.position - ray.origin)).First();
+        }
+
+        Vector3 head = feedback != null && feedback.headCamera != null ? feedback.headCamera.position : transform.position;
+        return candidates.OrderBy(f => (f.transform.position - head).sqrMagnitude).First();
     }
 
     private void Report(VoiceCommand command, bool success, string message, Vector3? near)

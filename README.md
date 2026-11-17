@@ -39,9 +39,26 @@ Each spawned furniture gets a `FurnitureInstanceInfo` (product, size, colour, pr
 **Pointing no longer blocks locomotion.** Meta's `BaseInteractors` prefab has a `ScrollLocomotionGate` whose `ActiveStateTracker` deactivates a controller's whole `LocomotionControllerInteractorGroup` (turn, teleport, slide) as soon as that controller's ray hovers anything. `LocomotionGate`, added automatically next to `TurnSettings`, replaces that tracker's condition at runtime (the prefab is in the package cache, so it can't be edited). Locomotion is now available while pointing at the menu or furniture. It is turned off on **both** controllers only while a furniture item is selected, so you no longer need to point both controllers at the item. Meta's other tracker in the same gate still hides the ray while you are turning or moving. Hand-tracking locomotion (`HoverInteractorsGate`) is unchanged. Other features can block locomotion temporarily with `LocomotionGate.AddBlocker(key)` / `RemoveBlocker(key)`.
 
 
-## Voice commands: "Place a chair here"
+## Voice commands: place, move, delete, undo
 
 Hold the **left X button**, point the right controller at the floor, and say *"Place a chair here"*, then release X. While X is held, a blue disc marks the pointed spot and a label shows what is heard. When X is released, that spot is kept ("here" = where you pointed when you finished speaking). The furniture is put at the **closest valid spot** around it.
+
+### All voice commands
+
+Hold **X**, point, say the command, wait for the text to appear, then release X. The pointed spots are taken at release.
+
+| Command | Right controller points at | Left controller points at |
+|---|---|---|
+| *"Place a chair here"* (also *"add a red chair"*, *"put a double bed there"*) | the floor spot | (nothing; used only if the right one points nowhere) |
+| *"Move this furniture here"* (also *"move this there"*, *"put this here"*) | the furniture to move | its new spot (orange marker) |
+| *"Move the red chair here"* / *"move the chair here"* | (nothing needed; the item is found by name or type, preferring the one closest to where the right ray points) | its new spot |
+| *"Delete this furniture"* (also *"remove this"*, *"get rid of that"*, *"delete the red chair"*) | the furniture | |
+| *"Undo"* (also *"go back"*, *"cancel that"*) | | |
+
+- **Undo** covers the last place, move and delete, whether they were made by voice, menu, joystick or the A button (`FurnitureHistory`, last 20 actions). Deleting is a soft delete (the object is hidden, then really destroyed when it leaves the history or when the room changes), so undo brings back the same object with its size and colour. If the old spot has been taken since, undo uses the closest free spot.
+- **Move** uses the same free-spot search as placing, but the item ignores itself. Near a wall, it is put with its back to the wall; otherwise it keeps its rotation. It glides there in 0.3 s (`ConstrainedFurnitureManipulator.MoveTo`).
+- While X is held, the pointed furniture shows its usual hover outline, the blue disc shows the right controller's floor spot, and the orange disc shows the left one's. The left pointer (`PointingTarget` on the left controller) is created automatically.
+- "put / bring / set" mean **move** with "this/that/it" or "the …" (*"put the chair there"*), and **place** with "a/an" (*"put a chair here"*).
 
 ### Setup (once per machine / scene)
 
@@ -61,7 +78,7 @@ Hold the **left X button**, point the right controller at the floor, and say *"P
 
 ### Microphone and recognition quality
 
-- **Which mic:** `VoiceCommandController > Microphone`. *Auto* uses the headset mic when a headset is connected (`OVRManager.isHmdPresent`, Link on PC) and the PC's own mic otherwise. *Headset*, *Computer* or *Custom* (a name fragment such as "Realtek") force one. The mic is never switched automatically: an earlier version did, and it bounced between the PC and headset mics. Without this, the Voice SDK always records from the first Windows device, which is the Quest Link mic. On Quest itself there is only one mic.
+- **Which mic:** `VoiceCommandController > Microphone`. *Auto* uses the PC's own mic in the Editor/on PC, and the headset mic on a Quest build (the only one there). The Quest mic seen by Windows ("Headset Microphone (Oculus Virtual Audio Device)") only carries audio during an active Link session with Link audio enabled (Meta Horizon Link > Devices > your headset > audio settings); otherwise it records silence. *Headset*, *Computer* or *Custom* (a name fragment such as "Realtek") force one. The mic is never switched automatically: an earlier version did, and it bounced between the PC and headset mics. Without this, the Voice SDK always records from the first Windows device, which is the Quest Link mic. On Quest itself there is only one mic.
 - **Listen until release:** the SDK normally stops recording after ~1 s without new words, which cut sentences when you paused. While X is held, it now keeps recording (`Listen Until Release`).
 - **Too-quiet recordings are ignored** (`Min Speech Level`, 0.02 by default): Wit.ai invents words from noise. Each `[Voice] Push-to-talk released` log line shows the max mic level, which you can use to tune the threshold.
 - **Mishearings:** `VoiceCommandParser` maps common sound-alikes ("share" → chair, "disk" → desk, "war drop" → wardrobe, "please" → place) and tolerates one wrong letter in 5+ letter words (two in 8+). Add entries to `SoundAlikes` / `SoundAlikePairs` from what you see in the `[Voice] Full transcription` logs.
@@ -88,6 +105,10 @@ The root `ConstrainedFurnitureManipulator` is the only component that writes the
 5. Release the right grip to confirm placement, then release the trigger to end selection and clear the white selection highlight. While the furniture is selected, press the right A button to delete it.
 6. During a grip, verify Y stays fixed and X/Z rotation remains zero. Tilt or rotate either physical controller while using the sticks; furniture movement and yaw should still follow only the stick axes.
 7. Press B while manipulating to restore the position and yaw from the start of that grip. Verify the existing furniture prefab still highlights/selects and its mesh/collider remain intact.
+
+## Controller tooltips
+
+`ControllerHelpTooltips` (on `ControllerHelp`) shows labels next to the Touch controllers. **Tips** appear while a furniture item is selected (manipulation controls). **General Tips** appear the rest of the time: *Hold X + point: voice command* (only when the scene has a `VoiceCommandController`), *Menu: furniture & rooms*, and *Trigger: select furniture / UI*. Edit the texts and positions (controller-local metres) in the Inspector, untick `Show General Tips` to hide them, or tick `Always Show` to place them in Play mode.
 
 ## Furniture audio feedback
 

@@ -1,3 +1,4 @@
+using System.Collections;
 using Oculus.Interaction;
 using UnityEngine;
 
@@ -44,6 +45,14 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
     private bool _grabActive;
     private bool _cancelledUntilDeselected;
     private bool _rotationSnapArmed = true;
+    private bool _scriptedMove;
+    private Coroutine _moveRoutine;
+
+    /// <summary>The furniture root this component moves.</summary>
+    public Transform FurnitureRoot => _furnitureTransform;
+
+    /// <summary>Current yaw around world Y, in degrees.</summary>
+    public float Yaw => _worldYaw;
 
     private void Awake()
     {
@@ -104,7 +113,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
 
     private void Update()
     {
-        if (!enabled)
+        if (!enabled || _scriptedMove)
         {
             return;
         }
@@ -112,12 +121,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         bool isSelected = _interactionState.IsSelected;
         if (isSelected && _input.DeletePressed)
         {
-            if (_audioManager != null)
-            {
-                _audioManager.PlayDeletion();
-            }
-
-            Destroy(_furnitureTransform.gameObject);
+            Delete();
             return;
         }
 
@@ -157,6 +161,83 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         EnforceRoomConstraints();
     }
 
+    /// <summary>
+    /// Deletes this furniture (A button or voice "delete this"). It is a soft delete through
+    /// <see cref="FurnitureHistory"/>, so "undo" can bring it back.
+    /// </summary>
+    public void Delete()
+    {
+        EndGrab();
+        if (_audioManager != null)
+        {
+            _audioManager.PlayDeletion();
+        }
+
+        FurnitureHistory.Instance.Delete(_furnitureTransform.gameObject);
+    }
+
+    /// <summary>
+    /// Moves the furniture to a pose chosen by code (voice "move this here", undo), with a short glide.
+    /// The pose must already be valid (checked by the caller); the floor height of the furniture is kept.
+    /// </summary>
+    public void MoveTo(Vector3 position, float yaw, float duration = 0.3f)
+    {
+        if (_furnitureTransform == null) return;
+        EndGrab();
+
+        position.y = _fixedWorldY;
+        if (_moveRoutine != null) StopCoroutine(_moveRoutine);
+
+        if (!isActiveAndEnabled || duration <= 0f)
+        {
+            FinishMove(position, yaw);
+            return;
+        }
+
+        _moveRoutine = StartCoroutine(GlideTo(position, yaw, duration));
+    }
+
+    private IEnumerator GlideTo(Vector3 position, float yaw, float duration)
+    {
+        _scriptedMove = true;
+        Vector3 startPosition = _furnitureTransform.position;
+        Quaternion startRotation = _furnitureTransform.rotation;
+        Quaternion endRotation = Quaternion.Euler(0f, yaw, 0f);
+
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / duration);
+            _furnitureTransform.SetPositionAndRotation(
+                Vector3.Lerp(startPosition, position, k),
+                Quaternion.Slerp(startRotation, endRotation, k));
+            yield return null;
+        }
+
+        FinishMove(position, yaw);
+    }
+
+    private void FinishMove(Vector3 position, float yaw)
+    {
+        _furnitureTransform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+        _worldYaw = yaw;
+        _scriptedMove = false;
+        _moveRoutine = null;
+        Physics.SyncTransforms();
+        if (_collisionHandler != null) _collisionHandler.NotifyPoseChanged();
+    }
+
+    private void OnDisable()
+    {
+        // Soft delete / room change during a glide: never stay stuck in scripted mode.
+        if (_moveRoutine != null)
+        {
+            StopCoroutine(_moveRoutine);
+            _moveRoutine = null;
+        }
+
+        _scriptedMove = false;
+    }
+
     private void BeginGrab()
     {
         _grabActive = true;
@@ -180,6 +261,15 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         if (_audioManager != null)
         {
             _audioManager.PlayMovementStop();
+        }
+
+        // Make joystick moves undoable too (B-cancel restores the start pose, so nothing is recorded then).
+        bool moved = (_furnitureTransform.position - _grabStartPosition).sqrMagnitude > 0.0001f ||
+                     Mathf.Abs(Mathf.DeltaAngle(_worldYaw, _grabStartYaw)) > 0.5f;
+        if (moved)
+        {
+            FurnitureHistory.Instance.RecordMoved(
+                _furnitureTransform.gameObject, _grabStartPosition, Quaternion.Euler(0f, _grabStartYaw, 0f));
         }
     }
 

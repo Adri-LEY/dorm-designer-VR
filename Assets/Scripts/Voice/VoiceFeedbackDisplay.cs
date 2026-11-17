@@ -17,6 +17,8 @@ public sealed class VoiceFeedbackDisplay : MonoBehaviour
 
     [Min(0.05f)] public float markerDiameter = 0.35f;
     public Color markerColor = new Color(0.25f, 0.7f, 1f, 1f);
+    [Tooltip("Colour of the second marker (left controller: destination of a move).")]
+    public Color secondaryMarkerColor = new Color(1f, 0.6f, 0.2f, 1f);
 
     [Tooltip("Distance of the label from the head, toward the target.")]
     [Min(0.3f)] public float labelDistance = 1.1f;
@@ -27,7 +29,7 @@ public sealed class VoiceFeedbackDisplay : MonoBehaviour
     public Color errorColor = new Color(1f, 0.6f, 0.35f, 1f);
 
     private Transform _marker;
-    private Renderer _markerRenderer;
+    private Transform _secondaryMarker;
     private TextMeshPro _label;
     private float _hideLabelAt = -1f;
     private Vector3? _labelAnchor;
@@ -35,7 +37,9 @@ public sealed class VoiceFeedbackDisplay : MonoBehaviour
 
     private void Awake()
     {
-        BuildMarker();
+        _marker = BuildMarker("VoiceTargetMarker", markerColor);
+        _secondaryMarker = BuildMarker("VoiceDestinationMarker", secondaryMarkerColor);
+        HideSecondaryMarker();
         BuildLabel();
         HideMarker();
         HideLabel();
@@ -43,17 +47,35 @@ public sealed class VoiceFeedbackDisplay : MonoBehaviour
 
     // ------------------------------------------------------------------ Marker
 
-    public void ShowMarker(Vector3 floorPoint)
-    {
-        _marker.gameObject.SetActive(true);
-        _marker.position = floorPoint + Vector3.up * 0.01f;
-        float pulse = 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 8f);
-        _marker.localScale = new Vector3(markerDiameter * pulse, 0.005f, markerDiameter * pulse);
-    }
+    public void ShowMarker(Vector3 floorPoint) => PlaceMarker(_marker, floorPoint);
 
+    /// <summary>Hides both markers.</summary>
     public void HideMarker()
     {
+        HidePrimaryMarker();
+        HideSecondaryMarker();
+    }
+
+    /// <summary>Hides only the main (blue, right controller) marker.</summary>
+    public void HidePrimaryMarker()
+    {
         if (_marker != null) _marker.gameObject.SetActive(false);
+    }
+
+    /// <summary>Second (orange) marker, for the left controller's pointed spot.</summary>
+    public void ShowSecondaryMarker(Vector3 floorPoint) => PlaceMarker(_secondaryMarker, floorPoint);
+
+    public void HideSecondaryMarker()
+    {
+        if (_secondaryMarker != null) _secondaryMarker.gameObject.SetActive(false);
+    }
+
+    private void PlaceMarker(Transform marker, Vector3 floorPoint)
+    {
+        marker.gameObject.SetActive(true);
+        marker.position = floorPoint + Vector3.up * 0.012f;
+        float pulse = 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 8f);
+        marker.localScale = new Vector3(markerDiameter * pulse, 0.005f, markerDiameter * pulse);
     }
 
     // ------------------------------------------------------------------ Label
@@ -117,23 +139,26 @@ public sealed class VoiceFeedbackDisplay : MonoBehaviour
 
     // ------------------------------------------------------------------ Building
 
-    private void BuildMarker()
+    private Transform BuildMarker(string markerName, Color color)
     {
         GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        disc.name = "VoiceTargetMarker";
+        disc.name = markerName;
         disc.transform.SetParent(transform, false);
 
         // No collider: the marker must never block spawning, rays or movement.
         Collider discCollider = disc.GetComponent<Collider>();
         if (discCollider != null) Destroy(discCollider);
 
-        _marker = disc.transform;
-        _markerRenderer = disc.GetComponent<Renderer>();
-        _markerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        _markerRenderer.receiveShadows = false;
+        Renderer markerRenderer = disc.GetComponent<Renderer>();
+        markerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        markerRenderer.receiveShadows = false;
 
         Material material = markerMaterial;
-        if (material == null)
+        if (material == null && _ownedMaterial != null)
+        {
+            material = _ownedMaterial;
+        }
+        else if (material == null)
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
             if (shader != null)
@@ -145,12 +170,14 @@ public sealed class VoiceFeedbackDisplay : MonoBehaviour
 
         if (material != null)
         {
-            _markerRenderer.sharedMaterial = material;
+            markerRenderer.sharedMaterial = material;
             var block = new MaterialPropertyBlock();
-            block.SetColor("_BaseColor", markerColor);
-            block.SetColor("_Color", markerColor);
-            _markerRenderer.SetPropertyBlock(block);
+            block.SetColor("_BaseColor", color);
+            block.SetColor("_Color", color);
+            markerRenderer.SetPropertyBlock(block);
         }
+
+        return disc.transform;
     }
 
     private void BuildLabel()
