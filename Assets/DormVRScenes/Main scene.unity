@@ -1725,7 +1725,7 @@ MonoBehaviour:
   _monoscopic: 0
   _sharpenType: 0
   _disableRecording: 0
-  _enableDynamicResolution: 0
+  _enableDynamicResolution: 1
   minDynamicResolutionScale: 1
   maxDynamicResolutionScale: 1
   quest2MinDynamicResolutionScale: 0.7
@@ -1780,7 +1780,7 @@ MonoBehaviour:
   requestBodyTrackingPermissionOnStartup: 0
   requestFaceTrackingPermissionOnStartup: 0
   requestEyeTrackingPermissionOnStartup: 0
-  requestScenePermissionOnStartup: 0
+  requestScenePermissionOnStartup: 1
   requestRecordAudioPermissionOnStartup: 0
   requestPassthroughCameraAccessPermissionOnStartup: 0
   _localDimming: 1
@@ -1841,7 +1841,7 @@ Transform:
   m_GameObject: {fileID: 174432845}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.48, y: 0.148, z: -0.91}
+  m_LocalPosition: {x: -0.48, y: 0.217, z: -0.91}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3391,6 +3391,7 @@ MonoBehaviour:
   catalog: {fileID: 1539325525}
   spawner: {fileID: 1539325526}
   pointing: {fileID: 381863872}
+  leftPointing: {fileID: 0}
   feedback: {fileID: 381863871}
   testCommand: place a chair here
 --- !u!114 &381863871
@@ -3409,6 +3410,7 @@ MonoBehaviour:
   markerMaterial: {fileID: 2100000, guid: 666208f1bc6d752489a68d419bdf2f5b, type: 2}
   markerDiameter: 0.35
   markerColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  secondaryMarkerColor: {r: 1, g: 0.6, b: 0.2, a: 1}
   labelDistance: 1.1
   labelFontSize: 0.45
   infoColor: {r: 1, g: 1, b: 1, a: 1}
@@ -3433,6 +3435,7 @@ MonoBehaviour:
   layers:
     serializedVersion: 2
     m_Bits: 4294967295
+  furnitureAimTolerance: 0.06
 --- !u!114 &381863873
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4056,7 +4059,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 8.544922, y: -0.06984711}
+  m_AnchoredPosition: {x: 8.544922, y: -0.09625244}
   m_SizeDelta: {x: 100, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &456286200
@@ -6031,7 +6034,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 614524479}
   m_HandleRect: {fileID: 614524478}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 0.9998533
   m_NumberOfSteps: 0
   m_OnValueChanged:
