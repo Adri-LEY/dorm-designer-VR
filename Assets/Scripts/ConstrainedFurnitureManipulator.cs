@@ -1,9 +1,11 @@
+using System.Collections;
 using Oculus.Interaction;
 using UnityEngine;
 
 /// <summary>
 /// Sole writer of a furniture root's world position and rotation.
-/// The object moves on the room's X/Z floor plane and turns only around world Y.
+/// The object moves on the room's X/Z floor plane and turns only around world Y
+/// (smoothly with the left stick by default, or in snap steps).
 /// </summary>
 [RequireComponent(typeof(FurnitureManipulationState), typeof(FurnitureControllerInput))]
 public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransformer
@@ -12,7 +14,19 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
     [Tooltip("Horizontal travel speed in world units per second.")]
     [SerializeField, Min(0f)] private float movementSpeed = 1.5f;
 
-    [Tooltip("Yaw change for each left-stick snap, in degrees.")]
+    public enum RotationMode { Smooth, Snap }
+
+    [Header("Rotation (left stick)")]
+    [Tooltip("Smooth: turns continuously while the stick is held. Snap: one step per deflection.")]
+    [SerializeField] private RotationMode rotationMode = RotationMode.Smooth;
+
+    [Tooltip("Smooth mode: turning speed at full stick deflection, in degrees per second.")]
+    [SerializeField, Range(10f, 360f)] private float rotationSpeed = 90f;
+
+    [Tooltip("Smooth mode: >1 makes small deflections turn slower for precise alignment.")]
+    [SerializeField, Range(1f, 3f)] private float rotationResponseExponent = 2f;
+
+    [Tooltip("Snap mode: yaw change for each left-stick snap, in degrees.")]
     [SerializeField, Min(1f)] private float rotationSnapAngle = 15f;
 
     [Tooltip("Stick values below this magnitude are ignored.")]
@@ -31,6 +45,14 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
     private bool _grabActive;
     private bool _cancelledUntilDeselected;
     private bool _rotationSnapArmed = true;
+    private bool _scriptedMove;
+    private Coroutine _moveRoutine;
+
+    /// <summary>The furniture root this component moves.</summary>
+    public Transform FurnitureRoot => _furnitureTransform;
+
+    /// <summary>Current yaw around world Y, in degrees.</summary>
+    public float Yaw => _worldYaw;
 
     private void Awake()
     {
@@ -91,7 +113,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
 
     private void Update()
     {
-        if (!enabled)
+        if (!enabled || _scriptedMove)
         {
             return;
         }
@@ -99,12 +121,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         bool isSelected = _interactionState.IsSelected;
         if (isSelected && _input.DeletePressed)
         {
-            if (_audioManager != null)
-            {
-                _audioManager.PlayDeletion();
-            }
-
-            Destroy(_furnitureTransform.gameObject);
+            Delete();
             return;
         }
 
@@ -134,7 +151,7 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
             }
 
             ApplyHorizontalMovement();
-            ApplyYawSnap();
+            ApplyRotation();
         }
         else
         {
@@ -142,6 +159,83 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         }
 
         EnforceRoomConstraints();
+    }
+
+    /// <summary>
+    /// Deletes this furniture (A button or voice "delete this"). It is a soft delete through
+    /// <see cref="FurnitureHistory"/>, so "undo" can bring it back.
+    /// </summary>
+    public void Delete()
+    {
+        EndGrab();
+        if (_audioManager != null)
+        {
+            _audioManager.PlayDeletion();
+        }
+
+        FurnitureHistory.Instance.Delete(_furnitureTransform.gameObject);
+    }
+
+    /// <summary>
+    /// Moves the furniture to a pose chosen by code (voice "move this here", undo), with a short glide.
+    /// The pose must already be valid (checked by the caller); the floor height of the furniture is kept.
+    /// </summary>
+    public void MoveTo(Vector3 position, float yaw, float duration = 0.3f)
+    {
+        if (_furnitureTransform == null) return;
+        EndGrab();
+
+        position.y = _fixedWorldY;
+        if (_moveRoutine != null) StopCoroutine(_moveRoutine);
+
+        if (!isActiveAndEnabled || duration <= 0f)
+        {
+            FinishMove(position, yaw);
+            return;
+        }
+
+        _moveRoutine = StartCoroutine(GlideTo(position, yaw, duration));
+    }
+
+    private IEnumerator GlideTo(Vector3 position, float yaw, float duration)
+    {
+        _scriptedMove = true;
+        Vector3 startPosition = _furnitureTransform.position;
+        Quaternion startRotation = _furnitureTransform.rotation;
+        Quaternion endRotation = Quaternion.Euler(0f, yaw, 0f);
+
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            float k = Mathf.SmoothStep(0f, 1f, t / duration);
+            _furnitureTransform.SetPositionAndRotation(
+                Vector3.Lerp(startPosition, position, k),
+                Quaternion.Slerp(startRotation, endRotation, k));
+            yield return null;
+        }
+
+        FinishMove(position, yaw);
+    }
+
+    private void FinishMove(Vector3 position, float yaw)
+    {
+        _furnitureTransform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+        _worldYaw = yaw;
+        _scriptedMove = false;
+        _moveRoutine = null;
+        Physics.SyncTransforms();
+        if (_collisionHandler != null) _collisionHandler.NotifyPoseChanged();
+    }
+
+    private void OnDisable()
+    {
+        // Soft delete / room change during a glide: never stay stuck in scripted mode.
+        if (_moveRoutine != null)
+        {
+            StopCoroutine(_moveRoutine);
+            _moveRoutine = null;
+        }
+
+        _scriptedMove = false;
     }
 
     private void BeginGrab()
@@ -167,6 +261,15 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         if (_audioManager != null)
         {
             _audioManager.PlayMovementStop();
+        }
+
+        // Make joystick moves undoable too (B-cancel restores the start pose, so nothing is recorded then).
+        bool moved = (_furnitureTransform.position - _grabStartPosition).sqrMagnitude > 0.0001f ||
+                     Mathf.Abs(Mathf.DeltaAngle(_worldYaw, _grabStartYaw)) > 0.5f;
+        if (moved)
+        {
+            FurnitureHistory.Instance.RecordMoved(
+                _furnitureTransform.gameObject, _grabStartPosition, Quaternion.Euler(0f, _grabStartYaw, 0f));
         }
     }
 
@@ -211,6 +314,35 @@ public sealed class ConstrainedFurnitureManipulator : MonoBehaviour, ITransforme
         // -------------------------------------
 
         TryApplyPose(position, _worldYaw, true);
+    }
+
+    private void ApplyRotation()
+    {
+        if (rotationMode == RotationMode.Snap)
+        {
+            ApplyYawSnap();
+        }
+        else
+        {
+            ApplySmoothYaw();
+        }
+    }
+
+    private void ApplySmoothYaw()
+    {
+        float horizontal = _input.LeftStickX;
+        float magnitude = Mathf.Abs(horizontal);
+        if (magnitude <= inputDeadzone)
+        {
+            return;
+        }
+
+        float adjusted = Mathf.Clamp01((magnitude - inputDeadzone) / (1f - inputDeadzone));
+        float speed = Mathf.Pow(adjusted, rotationResponseExponent) * rotationSpeed;
+        float candidateYaw = _worldYaw + Mathf.Sign(horizontal) * speed * Time.deltaTime;
+
+        // If the full step would hit a wall or another furniture, the furniture simply stops turning.
+        TryApplyPose(_furnitureTransform.position, candidateYaw, true);
     }
 
     private void ApplyYawSnap()
