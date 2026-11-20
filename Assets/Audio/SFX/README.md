@@ -16,7 +16,4 @@ commercial projects. Kenney's licensing FAQ confirms CC0/public-domain use:
 | `close_001.ogg` | `close_001.ogg` | Furniture deletion |
 | `drop_001.ogg` | `drop_001.ogg` | Wall impact |
 
-`AudioManager.prefab` references these project copies. The undocumented
-`Assets/DormVRScenes/Resources/soundshelfstudio-ui-click-deep-512211.mp3`
-is intentionally left untouched and unused until its source/license can be
-verified.
+`AudioManager.prefab` references these project copies.

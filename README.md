@@ -59,6 +59,55 @@ Labels next to the controllers recall the buttons.
 - **Windows (PC VR)**: *File > Build Profiles > Windows*, **Switch Platform**, check that the Scene List contains only `DormVRScenes/Main scene`, then **Build** into a `Builds/` folder (ignored by git). Run the `.exe` while the headset is connected with Link / Air Link. No Meta developer account needed.
 - **Quest standalone (Android `.apk`)**: *Build Profiles > Android*, same Scene List, **Build And Run** with the headset plugged in by USB. This requires **developer mode** on the headset, which needs a Meta developer organization (free) and USB debugging enabled from the Meta Horizon phone app. The app then appears in the headset's *Library > Unknown Sources*; accept the microphone permission at first launch.
 
+## Repository contents
+
+The repository holds the full Unity project sources. Generated folders (`Library/`, `Temp/`, `Logs/`, `.utmp/`, builds) are not versioned; Unity recreates them when the project is opened.
+
+| Folder | Contents |
+|---|---|
+| `Assets/Scripts/` | All the project's C# code: furniture manipulation, menus, rooms (`Rooms/`), catalogue data (`Furniture/`), UI built at runtime (`UI/`), voice commands (`Voice/`), turning / locomotion (`Locomotion/`), Editor setup tools (`Editor/`) |
+| `Assets/DormVRScenes/` | The app scene (`Main scene.unity`), furniture models and prefabs (`Prefabs/`), icons / materials (`Resources/`), room presets (`Data/Rooms/`), Wit.ai configuration |
+| `Assets/Audio/SFX/` | Sound effects (with their license) |
+| `Assets/Resources/Audio/` | `AudioManager` prefab, loaded automatically |
+| `Packages/manifest.json` | Unity / Meta packages used (installed automatically by Unity) |
+| `ProjectSettings/` | Unity project settings (XR, Android, input, etc.) |
+
+## Team
+
+- Adrien LEY
+- Enzo Miech
+- Loïc GIUNTINI
+
+## Resources & citations
+
+### Engine, SDKs and packages
+
+- **Unity 6.3 LTS (6000.3.6f1)**, Unity Technologies: <https://unity.com>
+- **Meta XR SDK** (`com.meta.xr.sdk.all` 205.0.0: Core, Interaction, Voice, Audio, Haptics, Platform, MR Utility Kit), Meta: camera rig, controller input, ray interaction, locomotion. <https://developers.meta.com/horizon/documentation/unity/>
+- **Meta Voice SDK** + **Wit.ai** (Meta): speech-to-text for the voice commands (online service). <https://wit.ai> · <https://developers.meta.com/horizon/documentation/unity/voice-sdk-overview/>
+- **Unity OpenXR**, **XR Interaction Toolkit** 3.5.1, **XR Hands**, **XR Management**, **AR Foundation**, **Input System**, Unity Technologies. The `VRTemplateAssets/`, `XRI/` and `Samples/` folders come from Unity's **VR project template** and the XR Interaction Toolkit samples.
+- **Universal Render Pipeline (URP)** 17.3 and **TextMesh Pro**, Unity Technologies (TextMesh Pro's default font is Liberation Sans, SIL Open Font License).
+
+### Assets
+
+| Asset | Author / source | License | Used for |
+|---|---|---|---|
+| *Interface Sounds* 1.0 (`Assets/Audio/SFX/*.ogg`) | Kenney, <https://kenney.nl/assets/interface-sounds> | CC0 (public domain), see `Assets/Audio/SFX/Kenney-License.txt` | Selection, movement, deletion and wall-impact sounds |
+| *Free Button Set* (`Assets/TWD/`) | TWD, https://assetstore.unity.com/packages/2d/gui/icons/simple-button-set-02-184903?srsltid=AYCX9vIkmL1vCZqk01jGMzSWQpOcYOF2UcRCVgpWAd4KnsLoVCHkWY6u | Standard Unity Asset Store EULA | Menu button graphics |
+| Poppins font (in `Assets/TWD/FreeButtonSet/Fonts/`) | Indian Type Foundry, <https://fonts.google.com/specimen/Poppins> | SIL Open Font License 1.1 | Comes with the button set |
+| Furniture 3D models `SM_Bed_8`, `SM_Chair_13`, `SM_Chair_28`, `SM_Computer_desk_7`, `SM_Wardrobe_9`, `SM_Wardrobe_15` | *Low Poly Furniture Pack Free* by IGS, https://assetstore.unity.com/packages/3d/props/furniture/low-poly-furniture-pack-free-by-igs-389770 | Standard Unity Asset Store EULA | Catalogue furniture |
+| 3D model `Bed2` ("Blue Bed") and its textures `Var_01_*_4k-min.png` (`New Material.mat`) | Unknown | Unknown | Catalogue furniture |
+| Furniture icons (`bed.png`, `chair13.png`, ...) | those are screenshot of the 3D models | same as the 3D models | Catalogue thumbnails |
+
+### Data
+
+- **Room presets** (CROUS traditional room ~9 m², renovated room, T1 studio, T1 bis): approximate typical sizes of French student housing, chosen for the prototype. They are not official CROUS data.
+- **Product data** (prices, sizes, colours, descriptions): **placeholder values** written for the prototype; they do not come from real products or shops.
+
+### Development tools
+
+- Parts of the code and of this documentation were written with the help of **Claude** (Anthropic), an AI assistant, and reviewed and tested by the team.
+
 ---
 
 # Technical documentation
