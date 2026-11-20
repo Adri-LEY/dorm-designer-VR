@@ -79,7 +79,7 @@ MonoBehaviour:
       - rid: 1876391467148115988
       - rid: 653666819489136650
       - rid: 653666819489136652
-  m_AssetVersion: 10
+  m_AssetVersion: 9
   m_ObsoleteDefaultVolumeProfile: {fileID: 0}
   m_RenderingLayerNames:
   - Light Layer default
@@ -109,8 +109,6 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
     - rid: 653666819489136640
       type: {class: RayTracingRenderPipelineResources, ns: UnityEngine.Rendering.UnifiedRayTracing, asm: Unity.UnifiedRayTracing.Runtime}
       data:

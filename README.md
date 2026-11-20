@@ -1,5 +1,68 @@
 # dorm-designer-VR
 
+VR app for students to furnish an empty dorm room before buying anything: pick a room, browse a furniture catalogue (prices, real dimensions, sizes, colours), place and arrange furniture with the controllers or by voice.
+
+## Getting started
+
+> **⚠️ Voice commands: use the app in a very quiet room, with internet.**
+> - Speech recognition is easily disturbed: background conversations, music or noise lead to wrong or ignored commands. Speak clearly, close to the microphone.
+> - Voice commands need an **internet connection**: speech is turned into text online by Wit.ai. When running from Unity, the **PC** must be online; when the app is installed on the Quest, the **headset** must be connected to Wi-Fi. Without internet, everything else works, but not voice commands.
+
+### Requirements
+
+- **Unity 6000.3.6f1** (Unity 6.3 LTS), installed through Unity Hub with **Android Build Support** (for Quest builds).
+- A **Meta Quest 3** (or 2 / 3S / Pro) with its controllers.
+- A Windows PC with the **Meta Horizon Link** app, and a USB-C data cable (Link) or Air Link (Wi-Fi), to play from Unity.
+- For voice commands: a free **Wit.ai** app and its token (see [Voice commands > Setup](#setup-once-per-machine--scene)).
+
+### Open the project
+
+1. Clone the repository.
+2. In **Unity Hub**: *Add > Add project from disk*, select the `dorm-designer-VR` folder, and open it with **6000.3.6f1**. The first import takes several minutes (it rebuilds the `Library/` folder).
+3. Open the scene **`Assets/DormVRScenes/Main scene.unity`**. This is the app's scene, not `Assets/Scenes/SampleScene`.
+4. If the scene has not been set up on this machine yet, run **Tools > Dorm Designer > Set Up Open Scene**, then **Tools > Dorm Designer > Set Up Voice Commands**, and save (Ctrl+S). See [Setting up a scene](#setting-up-a-scene-run-once-after-pulling).
+
+### Run it in the headset from Unity
+
+1. Start **Meta Horizon Link** on the PC and connect the headset with **Link** (cable) or **Air Link**. In the headset, accept the Link connection.
+2. In Meta Horizon Link > *Settings > General*, make sure it is the active **OpenXR runtime**.
+3. In Unity, press **Play**. The app shows in the headset.
+4. With the headset on, choose a room in the menu that appears in front of you.
+
+Logs are in Unity's **Console** (keep the *info* messages filter on). Voice command logs start with `[Voice]`.
+
+### How to use it
+
+| Action | How |
+|---|---|
+| Open / close the menu (furniture catalogue, **Room** tab) | **Menu** button on the left controller |
+| Click in the menu, select a furniture | Point with a controller and press the **trigger** |
+| Product sheet of a furniture → choose size / colour → **Place in room** | Click a furniture in the catalogue |
+| Move a selected furniture | Hold **right trigger** (select) + **right grip**, then the **right stick** |
+| Rotate a selected furniture | While selected and gripped: **left stick** (smooth turn) |
+| Cancel the current move | **B** |
+| Delete the selected furniture | **A** |
+| Turn / move yourself | Thumbsticks (when no furniture is selected); smooth or snap turning is set on the Room page |
+| Voice command | Hold **X**, point, speak, wait for the text to appear, release **X** |
+
+Voice commands (all start by holding **X**):
+
+- *"Place a chair here"*: right controller points at the floor. You can name colours / sizes: *"place a red chair"*, *"put a double bed there"*.
+- *"Move this furniture here"*: right controller points at the furniture, **left** controller at the new spot (orange marker). Or by name: *"move the red chair here"*.
+- *"Delete this furniture"*: right controller points at it. Or *"delete the red chair"*.
+- *"Undo"*: cancels the last place / move / delete (voice, menu, joystick or A button).
+
+Labels next to the controllers recall the buttons.
+
+### Build the app
+
+- **Windows (PC VR)**: *File > Build Profiles > Windows*, **Switch Platform**, check that the Scene List contains only `DormVRScenes/Main scene`, then **Build** into a `Builds/` folder (ignored by git). Run the `.exe` while the headset is connected with Link / Air Link. No Meta developer account needed.
+- **Quest standalone (Android `.apk`)**: *Build Profiles > Android*, same Scene List, **Build And Run** with the headset plugged in by USB. This requires **developer mode** on the headset, which needs a Meta developer organization (free) and USB debugging enabled from the Meta Horizon phone app. The app then appears in the headset's *Library > Unknown Sources*; accept the microphone permission at first launch.
+
+---
+
+# Technical documentation
+
 ## Setting up a scene (run once after pulling)
 
 Open `Assets/DormVRScenes/Main scene.unity`, then **Tools > Dorm Designer > Set Up Open Scene**, then save the scene. The command is safe to run again: it only adds what is missing and never overwrites product data you have already entered. It:
