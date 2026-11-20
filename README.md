@@ -198,7 +198,7 @@ Hold **X**, point, say the command, wait for the text to appear, then release X.
 
 ## Joystick furniture manipulation
 
-Furniture keeps its Meta Interaction SDK ray hover and select interaction. While the ray is selecting a piece (right trigger), holding the right grip enables manipulation:
+## Requirements
 
 - The right stick moves the object in room/world X and Z; the tracked hand/controller pose is not used.
 - The left stick turns the object smoothly around Y (90°/s at full deflection; small deflections turn slower for precise alignment). The old one-step-per-deflection behaviour is still available: set **Rotation Mode** to *Snap* on `ConstrainedFurnitureManipulator`.
@@ -208,15 +208,14 @@ Furniture keeps its Meta Interaction SDK ray hover and select interaction. While
 
 The root `ConstrainedFurnitureManipulator` is the only component that writes the furniture Transform. `FurnitureManipulationState` reads Meta's `RayInteractable` selection state, and `FurnitureControllerInput` samples Quest Touch controls through `OVRInput`. The manipulator fixes world Y and sets world rotation to `(0, yaw, 0)`. Its Inspector fields configure movement speed, rotation mode/speed/snap angle, and deadzone. The Rigidbody is made kinematic with gravity disabled; the Meta ray's `MoveFromTargetProvider` is removed/cleared, and Meta's default pose-follow `Grabbable` transformer is replaced at runtime with a no-op transformer. The legacy `FreezeRotationOnGrab` and `FurnitureCollisionHandler` callbacks remain compatible with serialized scenes but no longer write the furniture Transform.
 
-### Quest 3 verification
+This workflow runs the project from the Unity Editor while the headset is connected to the PC through Meta Horizon Link.
 
-1. Aim the right ray at furniture and verify it gets a subtle hover tint. Hold the right trigger and verify it turns white; release the trigger and verify it returns to the hover tint while still pointed at, then to its original color when the ray moves away.
-2. Keep the trigger held, hold the right grip, and move the right stick left/right. The furniture should move on world X.
-3. Keep the right grip held and move the right stick up/down. The furniture should move on world Z.
-4. Hold the left stick left or right while the furniture is selected and gripped. Each deflection should rotate by 15 degrees only once; return to neutral between steps.
-5. Release the right grip to confirm placement, then release the trigger to end selection and clear the white selection highlight. While the furniture is selected, press the right A button to delete it.
-6. During a grip, verify Y stays fixed and X/Z rotation remains zero. Tilt or rotate either physical controller while using the sticks; furniture movement and yaw should still follow only the stick axes.
-7. Press B while manipulating to restore the position and yaw from the start of that grip. Verify the existing furniture prefab still highlights/selects and its mesh/collider remain intact.
+1. Install and set up the Meta Horizon Link PC app from [Meta's Quest setup page](https://www.meta.com/quest/setup/). Sign in and complete its initial PC/headset setup.
+2. Connect Quest 3 to the PC with the USB-C data cable. Accept any connection prompts in the headset, then open Quick Settings and enter **Link** to connect to the PC. Confirm the headset is shown as connected in the PC app.
+3. If Unity does not start VR in the headset, check the PC app's OpenXR runtime setting and make **Meta Quest Link** the active runtime.
+4. In Unity Hub, install Unity `6000.3.6f1` and open this repository as a project. Wait for package import and compilation to finish.
+5. Open the main scene, `Assets/DormVRScenes/Main scene.unity`.
+6. Leave the headset in Link mode, then press **Play** in the Unity Editor. The scene should run through the PC Link connection in the headset. Use the controllers to try the catalogue and furniture controls below.
 
 ## Controller tooltips
 
@@ -224,8 +223,51 @@ The root `ConstrainedFurnitureManipulator` is the only component that writes the
 
 ## Furniture audio feedback
 
-The persistent `AudioManager` is automatically loaded from `Assets/Resources/Audio/AudioManager.prefab` before the scene starts, so it does not need to be placed in each scene. Its Inspector fields configure the event clips, master/event volumes, optional movement-stop confirmation, and repeat/collision cooldowns. It uses one shared 2D source for UI/manipulation feedback and one shared spatial source for wall impacts. No per-furniture AudioSources are created.
+## What you can do
 
-`InteractionFeedback` keeps the existing Meta selection and deselection callbacks and forwards them to the manager. `ConstrainedFurnitureManipulator` plays movement feedback only on grip start/end and deletion immediately before destruction. Wall impacts are detected from the existing blocked-pose overlap check, only for colliders named with "Wall", and are debounced until furniture moves away; the manager adds a cooldown as a second guard.
+### Open the furniture catalogue and place an item
 
-The selected sounds are in `Assets/Audio/SFX/`; their source and CC0 license are documented in that folder. To verify in Unity/Quest, exercise selection/deselection, grip start/release, deletion, and repeated pushes into then away from a wall. Movement-stop confirmation is disabled by default and can be enabled on the AudioManager prefab.
+- Press the **left controller Menu/Start button** to open or close the in-world catalogue. It starts closed and opens in front of the left controller.
+- Use the catalogue tabs and item buttons to browse and choose furniture. Choosing an item spawns it in front of the player, facing the player; the spawn point moves closer if an obstacle is in the way.
+
+### Select and arrange furniture
+
+| Controller input | Action |
+| --- | --- |
+| Right ray + **right trigger** | Point at and select furniture. Keep the trigger held to keep it selected. Hover and selection are shown with outlines. |
+| **Right grip** (while selected) | Hold to enable furniture movement and rotation. Release to confirm the current placement. |
+| **Right thumbstick** (while gripping) | Move the furniture across the horizontal floor plane, relative to the direction you are facing. Up/down moves forward/back; left/right moves left/right. |
+| **Left thumbstick left/right** (while gripping) | Rotate the furniture by 15 degrees for each stick deflection. Return the stick to its deadzone between steps. |
+| **B** on the right controller (while selected) | Cancel the current manipulation and restore the position and rotation from the start of that grip. Deselect and select the furniture again before manipulating it again. |
+| **A** on the right controller (while selected) | Delete the selected furniture. |
+| Release the **right trigger** | End ray selection. |
+
+Movement keeps the furniture at its original height and constrains rotation to upright yaw. Controller pose/tilt does not directly move the furniture; the thumbsticks do.
+
+`ConstrainedFurnitureManipulator` is the only component that writes the furniture Transform. Its Inspector settings control movement speed, rotation snap angle, and stick deadzone. The Rigidbody is kinematic with gravity disabled; Meta's ray hover/select behavior is retained while its pose-follow movement is disabled. The older `FreezeRotationOnGrab` and `FurnitureCollisionHandler` callbacks remain compatible with serialized scenes but do not move the furniture.
+
+### Audio feedback
+
+Selection, deselection, movement start, deletion, and wall impacts have sound feedback. A movement-stop confirmation sound is available but disabled by default. Audio files and their source/license information are documented in [`Assets/Audio/SFX/README.md`](Assets/Audio/SFX/README.md).
+
+The persistent `AudioManager` is loaded from `Assets/Resources/Audio/AudioManager.prefab` before the scene starts; it does not need to be added to individual scenes. Its Inspector settings configure the event clips and volumes, optional movement-stop confirmation, and repeat/collision cooldowns. Wall-impact feedback is triggered by the furniture's blocked-pose check for colliders named with `Wall`; it is debounced until the furniture moves away, with an additional manager cooldown.
+
+## Test checklist
+
+1. Open the catalogue with the left Menu/Start button, choose an item, and verify that it appears in front of you.
+2. Point the right ray at the furniture. Verify the hover outline appears; hold the right trigger and verify that it is selected. Move the ray away and release the trigger to clear the outline.
+3. Select furniture again, hold the right grip, and use the right thumbstick in each direction. Verify movement follows your view on the floor plane and the furniture height stays fixed.
+4. While still gripping, deflect the left thumbstick horizontally. Verify one 15-degree turn per deflection; return to neutral between turns.
+5. Release the right grip to confirm placement, then release the trigger to deselect. Select and grip it again, press B, and verify it returns to the position and rotation from the start of that grip. Deselect and reselect before testing another move.
+6. Select a piece and press A to delete it.
+7. Listen for selection/deselection, movement-start, and deletion sounds. Push furniture into a wall and away again to test wall-impact feedback.
+
+## Resources and credits
+
+### Sound effects
+
+The six furniture feedback sounds are from Kenney's [Interface Sounds](https://kenney.nl/assets/interface-sounds) pack, version 1.0. The pack's `Kenney-License.txt` identifies the sounds as CC0; attribution is not required. See [`Assets/Audio/SFX/README.md`](Assets/Audio/SFX/README.md) for the clip-to-feature mapping and license references.
+
+### 3D assets
+
+The 3D assets were sourced from free 3D assets available on the internet. Individual asset source URLs, authors, and license details are not catalogued in this repository.
